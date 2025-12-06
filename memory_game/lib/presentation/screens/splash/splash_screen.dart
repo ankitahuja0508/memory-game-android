@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../domain/services/audio_service.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../widgets/common/gradient_background.dart';
 
@@ -21,8 +22,18 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeApp() async {
-    await context.read<PlayerCubit>().loadPlayerData();
-    await Future.delayed(const Duration(milliseconds: 2000));
+    // Load player data including settings
+    final playerCubit = context.read<PlayerCubit>();
+    await playerCubit.loadPlayerData();
+    
+    // Sync audio service with loaded settings
+    final playerState = playerCubit.state;
+    final audioService = AudioService.instance;
+    audioService.updateSettings(playerState.settings);
+    
+    // Small delay for splash animation
+    await Future.delayed(const Duration(milliseconds: 1500));
+    
     if (mounted) {
       Navigator.of(context).pushReplacementNamed('/menu');
     }

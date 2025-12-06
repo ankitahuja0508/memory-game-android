@@ -3,14 +3,35 @@ import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../domain/services/audio_service.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
 import '../../widgets/common/currency_display.dart';
 import '../../widgets/common/game_button.dart';
 
-class MenuScreen extends StatelessWidget {
+class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
+
+  @override
+  State<MenuScreen> createState() => _MenuScreenState();
+}
+
+class _MenuScreenState extends State<MenuScreen> {
+  late AudioService _audioService;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioService = AudioService.instance;
+    
+    // Sync settings and start background music when entering menu
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final playerState = context.read<PlayerCubit>().state;
+      _audioService.updateSettings(playerState.settings);
+      _audioService.startMusic();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +57,10 @@ class MenuScreen extends StatelessWidget {
                         ),
                         IconGameButton(
                           icon: Icons.settings,
-                          onPressed: () => Navigator.pushNamed(context, '/settings'),
+                          onPressed: () {
+                            _audioService.playButton();
+                            Navigator.pushNamed(context, '/settings');
+                          },
                         ),
                       ],
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.3),
@@ -94,7 +118,10 @@ class MenuScreen extends StatelessWidget {
                       child: GameButton(
                         text: 'PLAY',
                         emoji: '🎮',
-                        onPressed: () => Navigator.pushNamed(context, '/levels'),
+                        onPressed: () {
+                          _audioService.playButton();
+                          Navigator.pushNamed(context, '/levels');
+                        },
                         gradient: AppColors.successGradient,
                       ),
                     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3),
@@ -109,7 +136,10 @@ class MenuScreen extends StatelessWidget {
                             child: GameButton(
                               text: 'Shop',
                               emoji: '🛒',
-                              onPressed: () => Navigator.pushNamed(context, '/shop'),
+                              onPressed: () {
+                                _audioService.playButton();
+                                Navigator.pushNamed(context, '/shop');
+                              },
                               isOutlined: true,
                               isSmall: true,
                             ),
@@ -119,7 +149,10 @@ class MenuScreen extends StatelessWidget {
                             child: GameButton(
                               text: 'Rewards',
                               emoji: '🎁',
-                              onPressed: () => Navigator.pushNamed(context, '/daily'),
+                              onPressed: () {
+                                _audioService.playButton();
+                                Navigator.pushNamed(context, '/daily');
+                              },
                               isOutlined: true,
                               isSmall: true,
                             ),
@@ -136,7 +169,10 @@ class MenuScreen extends StatelessWidget {
                       child: GameButton(
                         text: 'Achievements',
                         emoji: '🏆',
-                        onPressed: () => Navigator.pushNamed(context, '/achievements'),
+                        onPressed: () {
+                          _audioService.playButton();
+                          Navigator.pushNamed(context, '/achievements');
+                        },
                         isOutlined: true,
                         isSmall: true,
                       ),

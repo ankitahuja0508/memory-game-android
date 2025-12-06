@@ -30,20 +30,28 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late GameCubit _gameCubit;
   late ConfettiController _confettiController;
+  late AudioService _audioService;
   bool _showTutorial = false;
 
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
+    
+    // Use the singleton AudioService instance
+    _audioService = AudioService.instance;
+
+    final playerState = context.read<PlayerCubit>().state;
+    
+    // Sync audio settings with player preferences
+    _audioService.updateSettings(playerState.settings);
 
     _gameCubit = GameCubit(
       levelGenerator: LevelGeneratorService(),
-      audioService: AudioService(),
+      audioService: _audioService,
       hapticService: HapticService(),
     );
 
-    final playerState = context.read<PlayerCubit>().state;
     final showPreview = playerState.settings.showPreview;
     
     // Check if tutorial should be shown (only on level 1, first time)
