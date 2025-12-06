@@ -21,15 +21,12 @@ class ResultDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final screenWidth = MediaQuery.of(context).size.width;
-    final isSmallScreen = screenWidth < 360;
-
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
       child: Container(
-        padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-        constraints: const BoxConstraints(maxWidth: 400),
+        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(maxWidth: 340),
         decoration: BoxDecoration(
           gradient: const LinearGradient(
             begin: Alignment.topLeft,
@@ -50,28 +47,25 @@ class ResultDialog extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             // Title
-            FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                result.isPerfect ? '🎉 PERFECT! 🎉' : '🏆 COMPLETE!',
-                style: AppTextStyles.headline3,
-                textAlign: TextAlign.center,
-              ),
+            Text(
+              result.isPerfect ? '🎉 PERFECT! 🎉' : '🏆 COMPLETE!',
+              style: AppTextStyles.headline2,
+              textAlign: TextAlign.center,
             )
                 .animate()
                 .fadeIn(duration: 400.ms)
                 .scale(begin: const Offset(0.5, 0.5)),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
             // Stars
-            AnimatedStarRating(stars: result.stars, size: isSmallScreen ? 36 : 44),
+            AnimatedStarRating(stars: result.stars, size: 44),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Stats Grid
+            // Stats
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.black.withAlpha(51),
                 borderRadius: BorderRadius.circular(12),
@@ -79,91 +73,83 @@ class ResultDialog extends StatelessWidget {
               child: Column(
                 children: [
                   _StatRow(icon: '⏱️', label: 'Time', value: result.formattedTime),
-                  const Divider(color: Colors.white24, height: 16),
+                  const Divider(color: Colors.white24, height: 20),
                   _StatRow(icon: '👆', label: 'Moves', value: '${result.moves}'),
-                  const Divider(color: Colors.white24, height: 16),
-                  _StatRow(icon: '🔥', label: 'Streak', value: result.longestStreak.toString()),
+                  const Divider(color: Colors.white24, height: 20),
+                  _StatRow(icon: '🔥', label: 'Streak', value: '${result.longestStreak}'),
                 ],
               ),
             )
                 .animate()
-                .fadeIn(delay: 500.ms)
+                .fadeIn(delay: 400.ms)
                 .slideY(begin: 0.2),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
             // Rewards
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [
-                    AppColors.coinColor.withAlpha(51),
-                    AppColors.gemColor.withAlpha(51),
+                    AppColors.coinColor.withAlpha(40),
+                    AppColors.gemColor.withAlpha(40),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text('💰', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 4),
+                  const Text('💰', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 6),
                   Text(
                     '+${result.totalCoins}',
-                    style: AppTextStyles.body1.copyWith(color: AppColors.coinColor, fontWeight: FontWeight.bold),
+                    style: AppTextStyles.headline3.copyWith(color: AppColors.coinColor),
                   ),
-                  const SizedBox(width: 16),
-                  const Text('✨', style: TextStyle(fontSize: 20)),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 20),
+                  const Text('✨', style: TextStyle(fontSize: 22)),
+                  const SizedBox(width: 6),
                   Text(
                     '+${result.xpEarned}XP',
-                    style: AppTextStyles.body1.copyWith(color: AppColors.secondary, fontWeight: FontWeight.bold),
+                    style: AppTextStyles.headline3.copyWith(color: AppColors.secondary),
                   ),
                 ],
               ),
             )
                 .animate()
-                .fadeIn(delay: 700.ms)
-                .shimmer(delay: 900.ms, duration: 1.seconds),
+                .fadeIn(delay: 600.ms)
+                .shimmer(delay: 800.ms, duration: 1.seconds),
 
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
 
-            // Buttons - Use icons only on very small screens
+            // Action Buttons - Icon buttons with labels below
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Expanded(
-                  child: _CompactButton(
-                    icon: Icons.home,
-                    label: isSmallScreen ? null : 'Home',
-                    onTap: onHome,
-                    isOutlined: true,
-                  ),
+                _ActionButton(
+                  icon: Icons.home_rounded,
+                  label: 'Home',
+                  onTap: onHome,
+                  color: AppColors.textSecondary,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: _CompactButton(
-                    icon: Icons.replay,
-                    label: isSmallScreen ? null : 'Retry',
-                    onTap: onReplay,
-                    isOutlined: true,
-                  ),
+                _ActionButton(
+                  icon: Icons.replay_rounded,
+                  label: 'Retry',
+                  onTap: onReplay,
+                  color: AppColors.secondary,
                 ),
-                const SizedBox(width: 8),
-                Expanded(
-                  flex: isSmallScreen ? 1 : 2,
-                  child: _CompactButton(
-                    icon: Icons.arrow_forward,
-                    label: 'Next',
-                    onTap: onNextLevel,
-                    isPrimary: true,
-                  ),
+                _ActionButton(
+                  icon: Icons.arrow_forward_rounded,
+                  label: 'Next',
+                  onTap: onNextLevel,
+                  color: AppColors.success,
+                  isPrimary: true,
                 ),
               ],
             )
                 .animate()
-                .fadeIn(delay: 900.ms)
+                .fadeIn(delay: 800.ms)
                 .slideY(begin: 0.3),
           ],
         ),
@@ -172,18 +158,18 @@ class ResultDialog extends StatelessWidget {
   }
 }
 
-class _CompactButton extends StatelessWidget {
+class _ActionButton extends StatelessWidget {
   final IconData icon;
-  final String? label;
+  final String label;
   final VoidCallback onTap;
-  final bool isOutlined;
+  final Color color;
   final bool isPrimary;
 
-  const _CompactButton({
+  const _ActionButton({
     required this.icon,
-    this.label,
+    required this.label,
     required this.onTap,
-    this.isOutlined = false,
+    required this.color,
     this.isPrimary = false,
   });
 
@@ -191,34 +177,47 @@ class _CompactButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          gradient: isPrimary ? const LinearGradient(colors: AppColors.successGradient) : null,
-          color: isOutlined ? null : AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-          border: isOutlined ? Border.all(color: AppColors.primary, width: 1.5) : null,
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 18, color: isOutlined ? AppColors.primary : Colors.white),
-            if (label != null) ...[
-              const SizedBox(width: 4),
-              Flexible(
-                child: Text(
-                  label!,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppTextStyles.caption.copyWith(
-                    color: isOutlined ? AppColors.primary : Colors.white,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: isPrimary
+                  ? const LinearGradient(colors: AppColors.successGradient)
+                  : null,
+              color: isPrimary ? null : AppColors.surface,
+              borderRadius: BorderRadius.circular(16),
+              border: isPrimary
+                  ? null
+                  : Border.all(color: color.withAlpha(100), width: 1.5),
+              boxShadow: isPrimary
+                  ? [
+                      BoxShadow(
+                        color: AppColors.success.withAlpha(80),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
+            ),
+            child: Icon(
+              icon,
+              size: 28,
+              color: isPrimary ? Colors.white : color,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isPrimary ? AppColors.success : color,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -239,11 +238,14 @@ class _StatRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Text(icon, style: const TextStyle(fontSize: 16)),
-        const SizedBox(width: 8),
-        Text(label, style: AppTextStyles.caption),
+        Text(icon, style: const TextStyle(fontSize: 18)),
+        const SizedBox(width: 10),
+        Text(label, style: AppTextStyles.body2),
         const Spacer(),
-        Text(value, style: AppTextStyles.body2.copyWith(fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
+        ),
       ],
     );
   }
