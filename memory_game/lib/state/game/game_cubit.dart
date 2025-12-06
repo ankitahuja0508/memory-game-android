@@ -33,16 +33,19 @@ class GameCubit extends Cubit<GameState> {
     // Start with preview phase - all cards visible
     final previewCards = cards.map((c) => c.copyWith(state: CardState.preview)).toList();
 
+    // Use preview duration from level config
+    final previewDuration = Duration(milliseconds: config.previewDuration);
+
     emit(GameState(
-      phase: showPreview ? GamePhase.preview : GamePhase.playing,
+      phase: showPreview && config.showPreview ? GamePhase.preview : GamePhase.playing,
       level: level,
-      cards: showPreview ? previewCards : cards,
+      cards: showPreview && config.showPreview ? previewCards : cards,
       timeLimit: config.timeLimit,
       levelConfig: config,
-      previewTimeRemaining: const Duration(milliseconds: AppConstants.previewDuration),
+      previewTimeRemaining: previewDuration,
     ));
 
-    if (showPreview) {
+    if (showPreview && config.showPreview) {
       _startPreviewPhase();
     } else {
       _startGameTimer();
@@ -368,7 +371,7 @@ class GameCubit extends Cubit<GameState> {
       mistakes: state.mistakes,
     );
 
-    final coins = GameResultCalculator.calculateCoins(
+    final baseCoins = GameResultCalculator.calculateCoins(
       level: state.level,
       stars: stars,
       isPerfect: state.isPerfect,
@@ -376,6 +379,10 @@ class GameCubit extends Cubit<GameState> {
       parTime: config?.starThresholds.timeForThree ?? Duration.zero,
       streak: state.longestStreak,
     );
+    
+    // Apply coin multiplier from level config (special levels give bonus coins)
+    final coinMultiplier = config?.coinMultiplier ?? 1.0;
+    final coins = (baseCoins * coinMultiplier).round();
 
     return GameResult(
       level: state.level,
@@ -394,6 +401,7 @@ class GameCubit extends Cubit<GameState> {
         isPerfect: state.isPerfect,
         newAchievements: [],
       ),
+      specialLevelType: config?.specialType,
     );
   }
 

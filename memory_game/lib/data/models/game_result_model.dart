@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'level_model.dart';
 
 class GameResult extends Equatable {
   final int level;
@@ -14,6 +15,7 @@ class GameResult extends Equatable {
   final int coinsEarned;
   final int xpEarned;
   final int bonusCoins;
+  final SpecialLevelType? specialLevelType;
 
   const GameResult({
     required this.level,
@@ -29,9 +31,30 @@ class GameResult extends Equatable {
     this.coinsEarned = 0,
     this.xpEarned = 0,
     this.bonusCoins = 0,
+    this.specialLevelType,
   });
 
   int get totalCoins => coinsEarned + bonusCoins;
+  
+  bool get isSpecialLevel => specialLevelType != null;
+  
+  String? get specialLevelBonus {
+    if (specialLevelType == null) return null;
+    switch (specialLevelType!) {
+      case SpecialLevelType.bossLevel:
+        return '🔥 Boss Level - 3x Coins!';
+      case SpecialLevelType.bonusRound:
+        return '🎁 Bonus Round - 2x Coins!';
+      case SpecialLevelType.speedChallenge:
+        return '⚡ Speed Challenge - 2.5x Coins!';
+      case SpecialLevelType.memoryMaster:
+        return '🧠 Memory Master - 2x Coins!';
+      case SpecialLevelType.mysteryLevel:
+        return '❓ Mystery Level';
+      case SpecialLevelType.dailyChallenge:
+        return '📅 Daily Challenge - 2x Coins!';
+    }
+  }
 
   String get formattedTime {
     final minutes = timeTaken.inMinutes;
@@ -40,7 +63,7 @@ class GameResult extends Equatable {
   }
 
   @override
-  List<Object?> get props => [level, stars, moves, timeTaken, matches, mistakes, isPerfect, coinsEarned];
+  List<Object?> get props => [level, stars, moves, timeTaken, matches, mistakes, isPerfect, coinsEarned, specialLevelType];
 }
 
 class GameResultCalculator {
