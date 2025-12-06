@@ -198,19 +198,20 @@ class _LevelTile extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            if (!isUnlocked)
-              Icon(Icons.lock, color: Colors.white.withAlpha(128), size: 24)
-            else ...[
-              Text(
-                level.toString(),
-                style: AppTextStyles.headline3.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
+            // Always show level number
+            Text(
+              level.toString(),
+              style: AppTextStyles.headline3.copyWith(
+                color: isUnlocked ? Colors.white : Colors.white.withAlpha(128),
+                fontWeight: FontWeight.bold,
+                fontSize: isUnlocked ? null : 14,
               ),
-              const SizedBox(height: 4),
+            ),
+            const SizedBox(height: 4),
+            if (!isUnlocked)
+              Icon(Icons.lock, color: Colors.white.withAlpha(128), size: 16)
+            else
               StarRating(stars: stars, size: 12),
-            ],
           ],
         ),
       ),

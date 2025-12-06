@@ -19,6 +19,13 @@ class PowerUpBar extends StatelessWidget {
     required this.onPowerUpTap,
   });
 
+  void _showPowerUpInfoDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => const PowerUpInfoDialog(),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
@@ -31,6 +38,25 @@ class PowerUpBar extends StatelessWidget {
         mainAxisSize: MainAxisSize.min,
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
+          // Info button
+          GestureDetector(
+            onTap: () => _showPowerUpInfoDialog(context),
+            child: Container(
+              width: 32,
+              height: 32,
+              decoration: BoxDecoration(
+                color: AppColors.surface.withAlpha(128),
+                shape: BoxShape.circle,
+                border: Border.all(color: AppColors.textSecondary.withAlpha(77)),
+              ),
+              child: const Icon(
+                Icons.help_outline,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           _PowerUpButton(
             config: PowerUpConfigs.peek,
             count: powerUpCounts['peek'] ?? 0,
@@ -58,6 +84,154 @@ class PowerUpBar extends StatelessWidget {
             count: powerUpCounts['magnet'] ?? 0,
             isActive: false,
             onTap: () => onPowerUpTap(PowerUpType.magnet),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Dialog showing information about all power-ups
+class PowerUpInfoDialog extends StatelessWidget {
+  const PowerUpInfoDialog({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    final powerUps = [
+      PowerUpConfigs.peek,
+      PowerUpConfigs.freeze,
+      PowerUpConfigs.hint,
+      PowerUpConfigs.magnet,
+    ];
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 48),
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        constraints: const BoxConstraints(maxWidth: 360),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.surface, AppColors.backgroundLight],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.primary.withAlpha(77)),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Title
+            Row(
+              children: [
+                const Icon(Icons.auto_awesome, color: AppColors.accent, size: 28),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Text(
+                    'Power-Ups Guide',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                  onPressed: () => Navigator.pop(context),
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(color: Colors.white24),
+            const SizedBox(height: 12),
+            
+            // Power-up list
+            ...powerUps.map((config) => _PowerUpInfoItem(config: config)),
+            
+            const SizedBox(height: 16),
+            
+            // Tip
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(30),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.primary.withAlpha(50)),
+              ),
+              child: const Row(
+                children: [
+                  Text('💡', style: TextStyle(fontSize: 18)),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Tap a power-up during the game to use it. Get more in the Shop!',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ).animate().scale(duration: 200.ms, curve: Curves.easeOut);
+  }
+}
+
+class _PowerUpInfoItem extends StatelessWidget {
+  final PowerUpConfig config;
+
+  const _PowerUpInfoItem({required this.config});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withAlpha(40),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.primary.withAlpha(100)),
+            ),
+            child: Center(
+              child: Text(config.icon, style: const TextStyle(fontSize: 24)),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  config.name,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  config.description,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
           ),
         ],
       ),
