@@ -4,12 +4,10 @@ import '../../data/models/settings_model.dart';
 
 /// Audio service for playing game sounds and background music.
 /// 
-/// ## Setup Instructions:
-/// 1. Download royalty-free sounds from sources listed in AUDIO_SETUP.md
-/// 2. Place audio files in assets/audio/ folder
-/// 3. Run `flutter pub get` to update assets
+/// This is a singleton - use AudioService.instance to access.
+/// Call AudioService.instance.initialize() once at app startup.
 /// 
-/// ## Required Audio Files:
+/// ## Required Audio Files (in assets/audio/):
 /// - card_flip.mp3      - Card flip sound (short whoosh)
 /// - match_success.mp3  - Correct match (chime/ding)
 /// - match_fail.mp3     - Wrong match (soft buzz)
@@ -21,6 +19,16 @@ import '../../data/models/settings_model.dart';
 /// - countdown.mp3      - Countdown beep (beep)
 /// - background_music.mp3 - Game background music (looping)
 class AudioService {
+  // Singleton instance
+  static final AudioService _instance = AudioService._internal();
+  static AudioService get instance => _instance;
+  
+  // Private constructor for singleton
+  AudioService._internal();
+  
+  // Public constructor for backwards compatibility (returns singleton)
+  factory AudioService() => _instance;
+
   // Separate players for different sound types
   final AudioPlayer _sfxPlayer = AudioPlayer();
   final AudioPlayer _musicPlayer = AudioPlayer();
@@ -31,12 +39,17 @@ class AudioService {
   SettingsModel _settings = const SettingsModel();
   bool _isMusicPlaying = false;
   bool _isInitialized = false;
+  bool _isInitializing = false;
+
+  /// Check if the audio service is initialized
+  bool get isInitialized => _isInitialized;
 
   /// Initialize the audio service and check available audio files
   Future<void> initialize() async {
-    if (_isInitialized) return;
+    if (_isInitialized || _isInitializing) return;
+    _isInitializing = true;
     
-    // Check which audio files are available
+    // List of all audio files to check
     final audioFiles = [
       'card_flip.mp3',
       'match_success.mp3',
@@ -50,26 +63,35 @@ class AudioService {
       'background_music.mp3',
     ];
     
+    // Check which audio files are available
     for (final file in audioFiles) {
       try {
-        // Try to check if asset exists
         await rootBundle.load('assets/audio/$file');
         _audioAvailable[file] = true;
-      } catch (_) {
+      } catch (e) {
         _audioAvailable[file] = false;
       }
     }
     
+    // Configure audio players
+    await _sfxPlayer.setReleaseMode(ReleaseMode.stop);
+    await _musicPlayer.setReleaseMode(ReleaseMode.loop);
+    await _musicPlayer.setVolume(0.4);
+    
     _isInitialized = true;
+    _isInitializing = false;
   }
 
+  /// Update audio settings (e.g., from player preferences)
   void updateSettings(SettingsModel settings) {
+    final musicWasEnabled = _settings.musicEnabled;
     _settings = settings;
     
     // Handle music toggle
     if (!settings.musicEnabled && _isMusicPlaying) {
       stopMusic();
-    } else if (settings.musicEnabled && !_isMusicPlaying) {
+    } else if (settings.musicEnabled && !_isMusicPlaying && musicWasEnabled != settings.musicEnabled) {
+      // Only auto-start if music was just enabled
       startMusic();
     }
   }
@@ -77,18 +99,31 @@ class AudioService {
   /// Internal method to play a sound effect
   Future<void> _playSfx(String filename) async {
     if (!_settings.soundEnabled) return;
+    if (!_isInitialized) {
+      await initialize();
+    }
     
     if (_audioAvailable[filename] == true) {
       try {
+        // Stop any current sound and play new one
         await _sfxPlayer.stop();
         await _sfxPlayer.play(AssetSource('audio/$filename'));
       } catch (e) {
-        // Fall back to system sound
-        await SystemSound.play(SystemSoundType.click);
+        // Fall back to system sound if playback fails
+        _playSystemSound();
       }
     } else {
       // Fall back to system sound when audio file not available
-      await SystemSound.play(SystemSoundType.click);
+      _playSystemSound();
+    }
+  }
+  
+  /// Play system click sound as fallback
+  void _playSystemSound() {
+    try {
+      SystemSound.play(SystemSoundType.click);
+    } catch (_) {
+      // Silently ignore if system sound also fails
     }
   }
 
@@ -104,10 +139,10 @@ class AudioService {
     if (_audioAvailable['match_success.mp3'] == true) {
       await _playSfx('match_success.mp3');
     } else {
-      // Fallback: double click pattern
-      await SystemSound.play(SystemSoundType.click);
+      // Fallback: double click pattern for positive feedback
+      _playSystemSound();
       await Future.delayed(const Duration(milliseconds: 100));
-      await SystemSound.play(SystemSoundType.click);
+      _playSystemSound();
     }
   }
 
@@ -125,7 +160,7 @@ class AudioService {
     } else {
       // Fallback: triple click pattern for celebration
       for (int i = 0; i < 3; i++) {
-        await SystemSound.play(SystemSoundType.click);
+        _playSystemSound();
         await Future.delayed(const Duration(milliseconds: 80));
       }
     }
@@ -140,7 +175,7 @@ class AudioService {
     } else {
       // Fallback: special pattern
       for (int i = 0; i < 4; i++) {
-        await SystemSound.play(SystemSoundType.click);
+        _playSystemSound();
         await Future.delayed(Duration(milliseconds: 60 + (i * 20)));
       }
     }
@@ -170,12 +205,15 @@ class AudioService {
   Future<void> startMusic() async {
     if (!_settings.musicEnabled) return;
     if (_isMusicPlaying) return;
+    if (!_isInitialized) {
+      await initialize();
+    }
     
     if (_audioAvailable['background_music.mp3'] == true) {
       try {
         await _musicPlayer.setSource(AssetSource('audio/background_music.mp3'));
         await _musicPlayer.setReleaseMode(ReleaseMode.loop);
-        await _musicPlayer.setVolume(0.5); // Background music at 50% volume
+        await _musicPlayer.setVolume(0.4);
         await _musicPlayer.resume();
         _isMusicPlaying = true;
       } catch (e) {
@@ -186,14 +224,18 @@ class AudioService {
 
   /// Stop background music
   Future<void> stopMusic() async {
-    await _musicPlayer.stop();
+    try {
+      await _musicPlayer.stop();
+    } catch (_) {}
     _isMusicPlaying = false;
   }
 
-  /// Pause background music (e.g., when game is paused)
+  /// Pause background music (e.g., when game is paused or app backgrounded)
   Future<void> pauseMusic() async {
     if (_isMusicPlaying) {
-      await _musicPlayer.pause();
+      try {
+        await _musicPlayer.pause();
+      } catch (_) {}
     }
   }
 
@@ -201,18 +243,24 @@ class AudioService {
   Future<void> resumeMusic() async {
     if (!_settings.musicEnabled) return;
     if (_isMusicPlaying) {
-      await _musicPlayer.resume();
+      try {
+        await _musicPlayer.resume();
+      } catch (_) {}
     }
   }
 
   /// Set music volume (0.0 to 1.0)
   Future<void> setMusicVolume(double volume) async {
-    await _musicPlayer.setVolume(volume.clamp(0.0, 1.0));
+    try {
+      await _musicPlayer.setVolume(volume.clamp(0.0, 1.0));
+    } catch (_) {}
   }
 
   /// Set SFX volume (0.0 to 1.0)
   Future<void> setSfxVolume(double volume) async {
-    await _sfxPlayer.setVolume(volume.clamp(0.0, 1.0));
+    try {
+      await _sfxPlayer.setVolume(volume.clamp(0.0, 1.0));
+    } catch (_) {}
   }
 
   /// Check if a specific audio file is available
@@ -227,6 +275,17 @@ class AudioService {
         .map((entry) => entry.key)
         .toList();
   }
+  
+  /// Get list of available audio files
+  List<String> getAvailableAudioFiles() {
+    return _audioAvailable.entries
+        .where((entry) => entry.value)
+        .map((entry) => entry.key)
+        .toList();
+  }
+
+  /// Check if music is currently playing
+  bool get isMusicPlaying => _isMusicPlaying;
 
   void dispose() {
     _sfxPlayer.dispose();
