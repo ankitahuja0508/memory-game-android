@@ -13,6 +13,7 @@ import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
 import '../../widgets/common/animated_counter.dart';
+import '../../widgets/common/tutorial_overlay.dart';
 import '../../widgets/cards/game_board.dart';
 import '../../widgets/cards/power_up_bar.dart';
 import '../result/result_screen.dart';
@@ -29,6 +30,7 @@ class GameScreen extends StatefulWidget {
 class _GameScreenState extends State<GameScreen> {
   late GameCubit _gameCubit;
   late ConfettiController _confettiController;
+  bool _showTutorial = false;
 
   @override
   void initState() {
@@ -43,7 +45,29 @@ class _GameScreenState extends State<GameScreen> {
 
     final playerState = context.read<PlayerCubit>().state;
     final showPreview = playerState.settings.showPreview;
+    
+    // Check if tutorial should be shown (only on level 1, first time)
+    if (widget.level == 1 && !playerState.settings.tutorialCompleted) {
+      _showTutorial = true;
+    }
+    
     _gameCubit.startLevel(widget.level, themeId: playerState.player.equippedTheme, showPreview: showPreview);
+    
+    // Pause game if tutorial is showing
+    if (_showTutorial) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _gameCubit.pauseGame();
+      });
+    }
+  }
+
+  void _onTutorialComplete() {
+    final playerCubit = context.read<PlayerCubit>();
+    playerCubit.updateSettings(
+      playerCubit.state.settings.copyWith(tutorialCompleted: true),
+    );
+    setState(() => _showTutorial = false);
+    _gameCubit.resumeGame();
   }
 
   @override
@@ -57,22 +81,33 @@ class _GameScreenState extends State<GameScreen> {
     final playerCubit = context.read<PlayerCubit>();
     final powerUpId = type.name;
     final count = playerCubit.state.player.getPowerUpCount(powerUpId);
+    final config = PowerUpConfigs.getConfig(type);
 
     if (count <= 0) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No ${PowerUpConfigs.getConfig(type).name} power-ups! Buy more in the shop.'),
-          action: SnackBarAction(
-            label: 'Shop',
-            onPressed: () => Navigator.pushNamed(context, '/shop'),
-          ),
-        ),
-      );
+      // Pause the game and navigate to shop
+      _gameCubit.pauseGame();
+      _showPurchasePowerUpDialog(config);
       return;
     }
 
     // Use the power-up
     playerCubit.usePowerUp(powerUpId);
+
+    // Show activation feedback
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Text(config.icon, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Text('${config.name} activated!'),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        duration: const Duration(seconds: 1),
+      ),
+    );
 
     // Activate the effect
     switch (type) {
@@ -91,6 +126,110 @@ class _GameScreenState extends State<GameScreen> {
       default:
         break;
     }
+  }
+
+  void _showPurchasePowerUpDialog(PowerUpConfig config) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Row(
+          children: [
+            Text(config.icon, style: const TextStyle(fontSize: 28)),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'No ${config.name}!',
+                style: const TextStyle(fontSize: 18),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              config.description,
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(30),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Text('💰', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${config.coinCost}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.coinColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Text('Coins', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                  const Text('or', style: TextStyle(color: AppColors.textSecondary)),
+                  Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Text('💎', style: TextStyle(fontSize: 16)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${config.gemCost}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.gemColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Text('Gems', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _gameCubit.resumeGame();
+            },
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              Navigator.pushNamed(context, '/shop').then((_) {
+                _gameCubit.resumeGame();
+              });
+            },
+            icon: const Icon(Icons.shopping_bag, size: 18),
+            label: const Text('Go to Shop'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showResultDialog() {
@@ -256,6 +395,12 @@ class _GameScreenState extends State<GameScreen> {
                       ],
                     ),
                   ),
+
+                  // Tutorial overlay
+                  if (_showTutorial)
+                    Positioned.fill(
+                      child: TutorialOverlay(onComplete: _onTutorialComplete),
+                    ),
                 ],
               ),
             ),

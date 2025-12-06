@@ -1,7 +1,15 @@
 import 'package:equatable/equatable.dart';
 
 enum DifficultyTier { beginner, easy, medium, hard, expert }
-enum SpecialLevelType { normal, bonusRound, bossLevel, speedChallenge, memoryMaster }
+
+enum SpecialLevelType { 
+  bonusRound,      // Extra time, relaxed - 2x coins
+  bossLevel,       // Large grid, special rewards - 3x coins
+  speedChallenge,  // Half time, fewer pairs - 2.5x coins
+  memoryMaster,    // Brief preview, then hidden - 2x coins
+  mysteryLevel,    // Unknown card positions
+  dailyChallenge,  // Unique daily configuration
+}
 
 /// Theme for card set
 class GameCardTheme extends Equatable {
@@ -33,10 +41,12 @@ class LevelConfig extends Equatable {
   final int rows;
   final Duration timeLimit;
   final GameCardTheme theme;
-  final SpecialLevelType specialType;
+  final SpecialLevelType? specialType; // null = normal level
   final DifficultyTier difficulty;
   final StarThresholds starThresholds;
-  final bool showPreview; // Whether to show cards at start
+  final bool showPreview;
+  final double coinMultiplier;
+  final int previewDuration; // in milliseconds
 
   const LevelConfig({
     required this.level,
@@ -45,16 +55,53 @@ class LevelConfig extends Equatable {
     required this.rows,
     required this.timeLimit,
     required this.theme,
-    this.specialType = SpecialLevelType.normal,
+    this.specialType,
     required this.difficulty,
     required this.starThresholds,
-    this.showPreview = true, // Default to showing preview
+    this.showPreview = true,
+    this.coinMultiplier = 1.0,
+    this.previewDuration = 3000,
   });
 
   int get totalCards => pairs * 2;
+  
+  bool get isSpecialLevel => specialType != null;
+  
+  String get difficultyName {
+    switch (difficulty) {
+      case DifficultyTier.beginner:
+        return 'Beginner';
+      case DifficultyTier.easy:
+        return 'Easy';
+      case DifficultyTier.medium:
+        return 'Medium';
+      case DifficultyTier.hard:
+        return 'Hard';
+      case DifficultyTier.expert:
+        return 'Expert';
+    }
+  }
+  
+  String get specialLevelEmoji {
+    if (specialType == null) return '';
+    switch (specialType!) {
+      case SpecialLevelType.bossLevel:
+        return '🔥';
+      case SpecialLevelType.bonusRound:
+        return '🎁';
+      case SpecialLevelType.speedChallenge:
+        return '⚡';
+      case SpecialLevelType.memoryMaster:
+        return '🧠';
+      case SpecialLevelType.mysteryLevel:
+        return '❓';
+      case SpecialLevelType.dailyChallenge:
+        return '📅';
+    }
+  }
 
   @override
-  List<Object?> get props => [level, pairs, columns, rows, timeLimit, theme, difficulty];
+  List<Object?> get props => [level, pairs, columns, rows, timeLimit, theme, difficulty, specialType];
 }
 
 class StarThresholds extends Equatable {

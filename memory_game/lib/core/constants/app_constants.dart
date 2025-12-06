@@ -41,6 +41,7 @@ class AppConstants {
   static const int startingPeekPowerUps = 3;
   static const int startingFreezePowerUps = 2;
   static const int startingHintPowerUps = 5;
+  static const int startingMagnetPowerUps = 2;
 
   // Power-up Costs
   static const int peekCost = 50;
