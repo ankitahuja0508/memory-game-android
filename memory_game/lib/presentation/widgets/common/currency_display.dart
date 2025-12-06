@@ -1,19 +1,17 @@
 import 'package:flutter/material.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 
-/// Display for coins and gems
 class CurrencyDisplay extends StatelessWidget {
   final int coins;
   final int gems;
-  final bool showGems;
   final VoidCallback? onCoinsTap;
   final VoidCallback? onGemsTap;
 
   const CurrencyDisplay({
     super.key,
     required this.coins,
-    this.gems = 0,
-    this.showGems = true,
+    required this.gems,
     this.onCoinsTap,
     this.onGemsTap,
   });
@@ -29,15 +27,13 @@ class CurrencyDisplay extends StatelessWidget {
           color: AppColors.coinColor,
           onTap: onCoinsTap,
         ),
-        if (showGems) ...[
-          const SizedBox(width: 12),
-          _CurrencyChip(
-            icon: '💎',
-            value: gems,
-            color: AppColors.gemColor,
-            onTap: onGemsTap,
-          ),
-        ],
+        const SizedBox(width: 8),
+        _CurrencyChip(
+          icon: '💎',
+          value: gems,
+          color: AppColors.gemColor,
+          onTap: onGemsTap,
+        ),
       ],
     );
   }
@@ -56,6 +52,12 @@ class _CurrencyChip extends StatelessWidget {
     this.onTap,
   });
 
+  String _formatValue(int value) {
+    if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
+    if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
+    return value.toString();
+  }
+
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
@@ -63,121 +65,25 @@ class _CurrencyChip extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
-          color: AppColors.surface,
+          color: Colors.black.withAlpha(77),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: color.withOpacity(0.5),
-            width: 1.5,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.2),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
+          border: Border.all(color: color.withAlpha(128), width: 1),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(icon, style: const TextStyle(fontSize: 18)),
+            Text(icon, style: const TextStyle(fontSize: 16)),
             const SizedBox(width: 6),
             Text(
-              _formatNumber(value),
-              style: TextStyle(
-                color: color,
+              _formatValue(value),
+              style: AppTextStyles.body2.copyWith(
+                color: Colors.white,
                 fontWeight: FontWeight.bold,
-                fontSize: 16,
               ),
             ),
-            if (onTap != null) ...[
-              const SizedBox(width: 4),
-              Icon(
-                Icons.add_circle,
-                color: color,
-                size: 16,
-              ),
-            ],
           ],
         ),
       ),
-    );
-  }
-
-  String _formatNumber(int number) {
-    if (number >= 1000000) {
-      return '${(number / 1000000).toStringAsFixed(1)}M';
-    } else if (number >= 1000) {
-      return '${(number / 1000).toStringAsFixed(1)}K';
-    }
-    return number.toString();
-  }
-}
-
-/// Single coin display
-class CoinDisplay extends StatelessWidget {
-  final int amount;
-  final double fontSize;
-  final bool showIcon;
-
-  const CoinDisplay({
-    super.key,
-    required this.amount,
-    this.fontSize = 16,
-    this.showIcon = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showIcon)
-          Text('💰', style: TextStyle(fontSize: fontSize)),
-        if (showIcon) const SizedBox(width: 4),
-        Text(
-          amount.toString(),
-          style: TextStyle(
-            color: AppColors.coinColor,
-            fontWeight: FontWeight.bold,
-            fontSize: fontSize,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Single gem display
-class GemDisplay extends StatelessWidget {
-  final int amount;
-  final double fontSize;
-  final bool showIcon;
-
-  const GemDisplay({
-    super.key,
-    required this.amount,
-    this.fontSize = 16,
-    this.showIcon = true,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (showIcon)
-          Text('💎', style: TextStyle(fontSize: fontSize)),
-        if (showIcon) const SizedBox(width: 4),
-        Text(
-          amount.toString(),
-          style: TextStyle(
-            color: AppColors.gemColor,
-            fontWeight: FontWeight.bold,
-            fontSize: fontSize,
-          ),
-        ),
-      ],
     );
   }
 }

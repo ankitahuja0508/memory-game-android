@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
-import '../../../state/app/app_cubit.dart';
-import '../../../state/app/app_state.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../widgets/common/gradient_background.dart';
 
-/// Splash screen with loading animation
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -15,136 +13,77 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _opacityAnimation;
-
+class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 1500),
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
-      ),
-    );
-
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.4, curve: Curves.easeIn),
-      ),
-    );
-
-    _controller.forward();
-
-    // Initialize app
-    Future.microtask(() async {
-      await context.read<PlayerCubit>().init();
-      if (mounted) {
-        context.read<AppCubit>().init();
-      }
-    });
+    _initializeApp();
   }
 
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
+  Future<void> _initializeApp() async {
+    await context.read<PlayerCubit>().loadPlayerData();
+    await Future.delayed(const Duration(milliseconds: 2000));
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed('/menu');
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AppCubit, AppState>(
-      listener: (context, state) {
-        if (state.status == AppStatus.ready) {
-          Navigator.of(context).pushReplacementNamed('/menu');
-        }
-      },
+    return GradientBackground(
       child: Scaffold(
-        body: GradientBackground(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                AnimatedBuilder(
-                  animation: _controller,
-                  builder: (context, child) {
-                    return Transform.scale(
-                      scale: _scaleAnimation.value,
-                      child: Opacity(
-                        opacity: _opacityAnimation.value,
-                        child: Column(
-                          children: [
-                            // Logo
-                            Container(
-                              width: 120,
-                              height: 120,
-                              decoration: BoxDecoration(
-                                gradient: const LinearGradient(
-                                  colors: AppColors.primaryGradient,
-                                ),
-                                borderRadius: BorderRadius.circular(30),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withOpacity(0.4),
-                                    blurRadius: 30,
-                                    offset: const Offset(0, 10),
-                                  ),
-                                ],
-                              ),
-                              child: const Center(
-                                child: Text(
-                                  '🧠',
-                                  style: TextStyle(fontSize: 60),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(height: 24),
-                            // Title
-                            const Text(
-                              AppStrings.appName,
-                              style: TextStyle(
-                                fontSize: 36,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
+        backgroundColor: Colors.transparent,
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                width: 120,
+                height: 120,
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(colors: AppColors.primaryGradient),
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withAlpha(77),
+                      blurRadius: 24,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 80),
-                // Loading indicator
-                const SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: CircularProgressIndicator(
-                    color: AppColors.primary,
-                    strokeWidth: 3,
-                  ),
+                child: const Center(
+                  child: Text('🧠', style: TextStyle(fontSize: 56)),
                 ),
-                const SizedBox(height: 16),
-                Text(
-                  AppStrings.loading,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
+              )
+                  .animate()
+                  .scale(duration: 600.ms, curve: Curves.elasticOut)
+                  .then()
+                  .shimmer(duration: 1.seconds),
+              const SizedBox(height: 32),
+              Text(
+                'Memory Match',
+                style: AppTextStyles.headline1.copyWith(
+                  foreground: Paint()
+                    ..shader = const LinearGradient(
+                      colors: [AppColors.primary, AppColors.secondary],
+                    ).createShader(const Rect.fromLTWH(0, 0, 200, 70)),
                 ),
-              ],
-            ),
+              )
+                  .animate()
+                  .fadeIn(delay: 300.ms, duration: 500.ms)
+                  .slideY(begin: 0.3, end: 0),
+              const SizedBox(height: 48),
+              const SizedBox(
+                width: 48,
+                height: 48,
+                child: CircularProgressIndicator(
+                  strokeWidth: 3,
+                  valueColor: AlwaysStoppedAnimation<Color>(AppColors.secondary),
+                ),
+              )
+                  .animate()
+                  .fadeIn(delay: 800.ms, duration: 400.ms),
+            ],
           ),
         ),
       ),

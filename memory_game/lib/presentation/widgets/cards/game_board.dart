@@ -1,124 +1,92 @@
-import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import '../../../data/models/card_model.dart';
 import 'memory_card.dart';
 
-/// Game board with card grid
 class GameBoard extends StatelessWidget {
   final List<CardModel> cards;
   final int columns;
+  final int rows;
   final Function(int) onCardTap;
-  final bool isInteractive;
+  final bool interactive;
 
   const GameBoard({
     super.key,
     required this.cards,
     required this.columns,
+    required this.rows,
     required this.onCardTap,
-    this.isInteractive = true,
+    this.interactive = true,
   });
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final rows = (cards.length / columns).ceil();
+        // Available space
+        final availableWidth = constraints.maxWidth - 24; // 12px padding each side
+        final availableHeight = constraints.maxHeight - 24;
 
-        // Calculate card size based on available space
-        final availableWidth = constraints.maxWidth;
-        final availableHeight = constraints.maxHeight;
+        // Calculate card size that fits
+        const spacing = 6.0;
+        
+        // Max size based on width
+        final maxCardWidth = (availableWidth - (spacing * (columns - 1))) / columns;
+        // Max size based on height
+        final maxCardHeight = (availableHeight - (spacing * (rows - 1))) / rows;
+        
+        // Use the smaller to ensure it fits, cap at 90px
+        final cardSize = [maxCardWidth, maxCardHeight, 90.0].reduce((a, b) => a < b ? a : b);
 
-        const spacing = 8.0;
-        final totalHorizontalSpacing = (columns + 1) * spacing;
-        final totalVerticalSpacing = (rows + 1) * spacing;
+        // Build grid
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: AnimationLimiter(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(rows, (rowIndex) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: rowIndex < rows - 1 ? spacing : 0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(columns, (colIndex) {
+                      final index = rowIndex * columns + colIndex;
+                      if (index >= cards.length) {
+                        return SizedBox(width: cardSize, height: cardSize);
+                      }
 
-        final cardWidth = (availableWidth - totalHorizontalSpacing) / columns;
-        final cardHeight = (availableHeight - totalVerticalSpacing) / rows;
-
-        // Use the smaller dimension to keep cards square-ish
-        final cardSize = math.min(cardWidth, cardHeight);
-
-        // Calculate actual grid size
-        final gridWidth = (cardSize * columns) + totalHorizontalSpacing;
-        final gridHeight = (cardSize * rows) + totalVerticalSpacing;
-
-        return Center(
-          child: SizedBox(
-            width: gridWidth,
-            height: gridHeight,
-            child: AnimationLimiter(
-              child: GridView.builder(
-                physics: const NeverScrollableScrollPhysics(),
-                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                  crossAxisCount: columns,
-                  mainAxisSpacing: spacing,
-                  crossAxisSpacing: spacing,
-                  childAspectRatio: 1.0,
-                ),
-                itemCount: cards.length,
-                itemBuilder: (context, index) {
-                  return AnimationConfiguration.staggeredGrid(
-                    position: index,
-                    duration: const Duration(milliseconds: 300),
-                    columnCount: columns,
-                    child: ScaleAnimation(
-                      child: FadeInAnimation(
-                        child: MemoryCard(
-                          card: cards[index],
-                          onTap: () => onCardTap(index),
-                          isInteractive: isInteractive,
-                          size: cardSize,
+                      return AnimationConfiguration.staggeredGrid(
+                        position: index,
+                        duration: const Duration(milliseconds: 300),
+                        columnCount: columns,
+                        child: ScaleAnimation(
+                          child: FadeInAnimation(
+                            child: Padding(
+                              padding: EdgeInsets.only(right: colIndex < columns - 1 ? spacing : 0),
+                              child: SizedBox(
+                                width: cardSize,
+                                height: cardSize,
+                                child: MemoryCard(
+                                  card: cards[index],
+                                  size: cardSize,
+                                  onTap: () => onCardTap(index),
+                                  interactive: interactive,
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
-                  );
-                },
-              ),
+                      );
+                    }),
+                  ),
+                );
+              }),
             ),
           ),
         );
       },
-    );
-  }
-}
-
-/// Compact game board for smaller spaces
-class CompactGameBoard extends StatelessWidget {
-  final List<CardModel> cards;
-  final int columns;
-  final double maxCardSize;
-
-  const CompactGameBoard({
-    super.key,
-    required this.cards,
-    required this.columns,
-    this.maxCardSize = 60,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      alignment: WrapAlignment.center,
-      children: cards.map((card) {
-        return SizedBox(
-          width: maxCardSize,
-          height: maxCardSize,
-          child: Container(
-            decoration: BoxDecoration(
-              color: card.isMatched ? Colors.green.withOpacity(0.3) : Colors.grey.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: card.isRevealed
-                  ? Text(card.symbol, style: const TextStyle(fontSize: 24))
-                  : const Icon(Icons.question_mark, size: 20),
-            ),
-          ),
-        );
-      }).toList(),
     );
   }
 }

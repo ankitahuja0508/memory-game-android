@@ -1,7 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'achievement_model.dart';
 
-/// Result of a completed game level
 class GameResult extends Equatable {
   final int level;
   final int stars;
@@ -16,10 +14,6 @@ class GameResult extends Equatable {
   final int coinsEarned;
   final int xpEarned;
   final int bonusCoins;
-  final List<Reward> bonusRewards;
-  final bool isNewBestTime;
-  final bool isNewBestMoves;
-  final List<String> unlockedAchievements;
 
   const GameResult({
     required this.level,
@@ -35,15 +29,9 @@ class GameResult extends Equatable {
     this.coinsEarned = 0,
     this.xpEarned = 0,
     this.bonusCoins = 0,
-    this.bonusRewards = const [],
-    this.isNewBestTime = false,
-    this.isNewBestMoves = false,
-    this.unlockedAchievements = const [],
   });
 
   int get totalCoins => coinsEarned + bonusCoins;
-
-  double get efficiency => optimalMoves / moves;
 
   String get formattedTime {
     final minutes = timeTaken.inMinutes;
@@ -52,23 +40,10 @@ class GameResult extends Equatable {
   }
 
   @override
-  List<Object?> get props => [
-        level,
-        stars,
-        moves,
-        timeTaken,
-        matches,
-        mistakes,
-        longestStreak,
-        isPerfect,
-        coinsEarned,
-        xpEarned,
-      ];
+  List<Object?> get props => [level, stars, moves, timeTaken, matches, mistakes, isPerfect, coinsEarned];
 }
 
-/// Calculates game results
 class GameResultCalculator {
-  /// Calculate stars based on performance
   static int calculateStars({
     required int moves,
     required int optimalMoves,
@@ -76,30 +51,17 @@ class GameResultCalculator {
     required Duration parTime,
     required int mistakes,
   }) {
-    int stars = 1; // Complete = 1 star
-
+    int stars = 1;
     final moveRatio = moves / optimalMoves;
     final timeBonus = timeTaken <= parTime;
 
-    // Star 2: Under move threshold OR under time
-    if (moveRatio <= 1.5 || timeBonus) {
-      stars = 2;
-    }
-
-    // Star 3: Excellent performance
-    if (moveRatio <= 1.2 && mistakes <= 2) {
-      stars = 3;
-    }
-
-    // Perfect game always gets 3 stars
-    if (mistakes == 0) {
-      stars = 3;
-    }
+    if (moveRatio <= 1.5 || timeBonus) stars = 2;
+    if (moveRatio <= 1.2 && mistakes <= 2) stars = 3;
+    if (mistakes == 0) stars = 3;
 
     return stars;
   }
 
-  /// Calculate coins earned
   static int calculateCoins({
     required int level,
     required int stars,
@@ -108,46 +70,23 @@ class GameResultCalculator {
     required Duration parTime,
     required int streak,
   }) {
-    int coins = 10 + (level ~/ 5); // Base coins scale with level
-
-    // Star bonus
+    int coins = 10 + (level ~/ 5);
     coins += stars * 5;
-
-    // Perfect game bonus
-    if (isPerfect) {
-      coins += 50;
-    }
-
-    // Speed bonus
-    if (timeTaken < parTime) {
-      coins += 15;
-    }
-
-    // Streak bonus
+    if (isPerfect) coins += 50;
+    if (timeTaken < parTime) coins += 15;
     coins += (streak * 2);
-
     return coins;
   }
 
-  /// Calculate XP earned
   static int calculateXP({
     required int stars,
     required bool isPerfect,
     required List<String> newAchievements,
   }) {
-    int xp = 20; // Base XP
-
-    // Star bonus
+    int xp = 20;
     xp += stars * 10;
-
-    // Perfect game bonus
-    if (isPerfect) {
-      xp += 50;
-    }
-
-    // Achievement bonus
+    if (isPerfect) xp += 50;
     xp += newAchievements.length * 25;
-
     return xp;
   }
 }

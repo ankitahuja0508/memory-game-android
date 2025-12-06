@@ -3,7 +3,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'domain/services/services.dart';
 import 'state/app/app_cubit.dart';
-import 'state/game/game_cubit.dart';
 import 'state/player/player_cubit.dart';
 import 'presentation/screens/splash/splash_screen.dart';
 import 'presentation/screens/menu/menu_screen.dart';
@@ -14,7 +13,6 @@ import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/achievements/achievements_screen.dart';
 import 'presentation/screens/daily_rewards/daily_rewards_screen.dart';
 
-/// Main application widget
 class MemoryGameApp extends StatefulWidget {
   const MemoryGameApp({super.key});
 
@@ -23,13 +21,10 @@ class MemoryGameApp extends StatefulWidget {
 }
 
 class _MemoryGameAppState extends State<MemoryGameApp> {
-  // Services
-  late final StorageService _storageService;
-  late final LevelGeneratorService _levelGeneratorService;
-  late final AudioService _audioService;
-  late final HapticService _hapticService;
-  late final AchievementService _achievementService;
-  late final DailyRewardService _dailyRewardService;
+  late StorageService _storageService;
+  late AchievementService _achievementService;
+  late DailyRewardService _dailyRewardService;
+  bool _isInitialized = false;
 
   @override
   void initState() {
@@ -37,43 +32,33 @@ class _MemoryGameAppState extends State<MemoryGameApp> {
     _initServices();
   }
 
-  void _initServices() {
+  Future<void> _initServices() async {
     _storageService = StorageService();
-    _levelGeneratorService = LevelGeneratorService();
-    _audioService = AudioService();
-    _hapticService = HapticService();
+    await _storageService.init();
     _achievementService = AchievementService();
     _dailyRewardService = DailyRewardService();
-
-    // Initialize audio service
-    _audioService.init();
-  }
-
-  @override
-  void dispose() {
-    _audioService.dispose();
-    super.dispose();
+    setState(() => _isInitialized = true);
   }
 
   @override
   Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return MaterialApp(
+        theme: AppTheme.darkTheme,
+        home: const Scaffold(
+          body: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+
     return MultiBlocProvider(
       providers: [
-        BlocProvider(
-          create: (_) => AppCubit(),
-        ),
+        BlocProvider(create: (_) => AppCubit()),
         BlocProvider(
           create: (_) => PlayerCubit(
             storageService: _storageService,
             achievementService: _achievementService,
             dailyRewardService: _dailyRewardService,
-          ),
-        ),
-        BlocProvider(
-          create: (_) => GameCubit(
-            levelGenerator: _levelGeneratorService,
-            audioService: _audioService,
-            hapticService: _hapticService,
           ),
         ),
       ],
@@ -82,54 +67,31 @@ class _MemoryGameAppState extends State<MemoryGameApp> {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.darkTheme,
         initialRoute: '/',
-        onGenerateRoute: _onGenerateRoute,
+        onGenerateRoute: (settings) {
+          switch (settings.name) {
+            case '/':
+              return MaterialPageRoute(builder: (_) => const SplashScreen());
+            case '/menu':
+              return MaterialPageRoute(builder: (_) => const MenuScreen());
+            case '/levels':
+              return MaterialPageRoute(builder: (_) => const LevelSelectScreen());
+            case '/game':
+              final args = settings.arguments as Map<String, dynamic>?;
+              final level = args?['level'] as int? ?? 1;
+              return MaterialPageRoute(builder: (_) => GameScreen(level: level));
+            case '/shop':
+              return MaterialPageRoute(builder: (_) => const ShopScreen());
+            case '/settings':
+              return MaterialPageRoute(builder: (_) => const SettingsScreen());
+            case '/achievements':
+              return MaterialPageRoute(builder: (_) => const AchievementsScreen());
+            case '/daily':
+              return MaterialPageRoute(builder: (_) => const DailyRewardsScreen());
+            default:
+              return MaterialPageRoute(builder: (_) => const MenuScreen());
+          }
+        },
       ),
-    );
-  }
-
-  Route<dynamic>? _onGenerateRoute(RouteSettings settings) {
-    switch (settings.name) {
-      case '/':
-        return _buildRoute(const SplashScreen(), settings);
-      case '/menu':
-        return _buildRoute(const MenuScreen(), settings);
-      case '/levels':
-        return _buildRoute(const LevelSelectScreen(), settings);
-      case '/game':
-        final level = settings.arguments as int? ?? 1;
-        return _buildRoute(GameScreen(level: level), settings);
-      case '/shop':
-        return _buildRoute(const ShopScreen(), settings);
-      case '/settings':
-        return _buildRoute(const SettingsScreen(), settings);
-      case '/achievements':
-        return _buildRoute(const AchievementsScreen(), settings);
-      case '/daily-rewards':
-        return _buildRoute(const DailyRewardsScreen(), settings);
-      default:
-        return _buildRoute(const MenuScreen(), settings);
-    }
-  }
-
-  Route<dynamic> _buildRoute(Widget page, RouteSettings settings) {
-    return PageRouteBuilder(
-      settings: settings,
-      pageBuilder: (context, animation, secondaryAnimation) => page,
-      transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        const begin = Offset(1.0, 0.0);
-        const end = Offset.zero;
-        const curve = Curves.easeInOut;
-
-        final tween = Tween(begin: begin, end: end).chain(
-          CurveTween(curve: curve),
-        );
-
-        return SlideTransition(
-          position: animation.drive(tween),
-          child: child,
-        );
-      },
-      transitionDuration: const Duration(milliseconds: 300),
     );
   }
 }

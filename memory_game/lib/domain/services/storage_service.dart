@@ -2,157 +2,80 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../data/models/models.dart';
 
-/// Service for persisting game data
 class StorageService {
+  late SharedPreferences _prefs;
+
   static const String _playerKey = 'player_data';
   static const String _settingsKey = 'settings';
   static const String _levelProgressKey = 'level_progress';
   static const String _achievementsKey = 'achievements';
-  static const String _dailyRewardsKey = 'daily_rewards';
-
-  SharedPreferences? _prefs;
+  static const String _dailyRewardKey = 'daily_reward';
 
   Future<void> init() async {
     _prefs = await SharedPreferences.getInstance();
   }
 
-  SharedPreferences get prefs {
-    if (_prefs == null) {
-      throw Exception('StorageService not initialized. Call init() first.');
-    }
-    return _prefs!;
-  }
-
   // Player Data
   Future<void> savePlayer(PlayerModel player) async {
-    await prefs.setString(_playerKey, jsonEncode(player.toJson()));
+    await _prefs.setString(_playerKey, jsonEncode(player.toJson()));
   }
 
   PlayerModel? loadPlayer() {
-    final data = prefs.getString(_playerKey);
+    final data = _prefs.getString(_playerKey);
     if (data == null) return null;
-    try {
-      return PlayerModel.fromJson(jsonDecode(data));
-    } catch (e) {
-      return null;
-    }
+    return PlayerModel.fromJson(jsonDecode(data));
   }
 
   // Settings
   Future<void> saveSettings(SettingsModel settings) async {
-    await prefs.setString(_settingsKey, jsonEncode(settings.toJson()));
+    await _prefs.setString(_settingsKey, jsonEncode(settings.toJson()));
   }
 
   SettingsModel loadSettings() {
-    final data = prefs.getString(_settingsKey);
+    final data = _prefs.getString(_settingsKey);
     if (data == null) return const SettingsModel();
-    try {
-      return SettingsModel.fromJson(jsonDecode(data));
-    } catch (e) {
-      return const SettingsModel();
-    }
+    return SettingsModel.fromJson(jsonDecode(data));
   }
 
   // Level Progress
   Future<void> saveLevelProgress(Map<int, LevelProgress> progress) async {
-    final data = progress.map(
-      (key, value) => MapEntry(key.toString(), value.toJson()),
-    );
-    await prefs.setString(_levelProgressKey, jsonEncode(data));
+    final map = progress.map((k, v) => MapEntry(k.toString(), v.toJson()));
+    await _prefs.setString(_levelProgressKey, jsonEncode(map));
   }
 
   Map<int, LevelProgress> loadLevelProgress() {
-    final data = prefs.getString(_levelProgressKey);
+    final data = _prefs.getString(_levelProgressKey);
     if (data == null) return {};
-    try {
-      final decoded = jsonDecode(data) as Map<String, dynamic>;
-      return decoded.map(
-        (key, value) => MapEntry(
-          int.parse(key),
-          LevelProgress.fromJson(value as Map<String, dynamic>),
-        ),
-      );
-    } catch (e) {
-      return {};
-    }
-  }
-
-  Future<void> updateLevelProgress(int level, LevelProgress progress) async {
-    final allProgress = loadLevelProgress();
-    allProgress[level] = progress;
-    await saveLevelProgress(allProgress);
+    final map = jsonDecode(data) as Map<String, dynamic>;
+    return map.map((k, v) => MapEntry(int.parse(k), LevelProgress.fromJson(v)));
   }
 
   // Achievements
-  Future<void> saveAchievements(Map<String, AchievementProgress> achievements) async {
-    final data = achievements.map(
-      (key, value) => MapEntry(key, value.toJson()),
-    );
-    await prefs.setString(_achievementsKey, jsonEncode(data));
+  Future<void> saveAchievements(Map<String, AchievementProgress> progress) async {
+    final map = progress.map((k, v) => MapEntry(k, v.toJson()));
+    await _prefs.setString(_achievementsKey, jsonEncode(map));
   }
 
   Map<String, AchievementProgress> loadAchievements() {
-    final data = prefs.getString(_achievementsKey);
+    final data = _prefs.getString(_achievementsKey);
     if (data == null) return {};
-    try {
-      final decoded = jsonDecode(data) as Map<String, dynamic>;
-      return decoded.map(
-        (key, value) => MapEntry(
-          key,
-          AchievementProgress.fromJson(value as Map<String, dynamic>),
-        ),
-      );
-    } catch (e) {
-      return {};
-    }
+    final map = jsonDecode(data) as Map<String, dynamic>;
+    return map.map((k, v) => MapEntry(k, AchievementProgress.fromJson(v)));
   }
 
   // Daily Rewards
   Future<void> saveDailyRewardStatus(DailyRewardStatus status) async {
-    await prefs.setString(_dailyRewardsKey, jsonEncode(status.toJson()));
+    await _prefs.setString(_dailyRewardKey, jsonEncode(status.toJson()));
   }
 
   DailyRewardStatus loadDailyRewardStatus() {
-    final data = prefs.getString(_dailyRewardsKey);
+    final data = _prefs.getString(_dailyRewardKey);
     if (data == null) return const DailyRewardStatus();
-    try {
-      return DailyRewardStatus.fromJson(jsonDecode(data));
-    } catch (e) {
-      return const DailyRewardStatus();
-    }
+    return DailyRewardStatus.fromJson(jsonDecode(data));
   }
 
-  // Clear all data
-  Future<void> clearAllData() async {
-    await prefs.remove(_playerKey);
-    await prefs.remove(_settingsKey);
-    await prefs.remove(_levelProgressKey);
-    await prefs.remove(_achievementsKey);
-    await prefs.remove(_dailyRewardsKey);
-  }
-
-  // Generic helpers
-  Future<void> setString(String key, String value) async {
-    await prefs.setString(key, value);
-  }
-
-  String? getString(String key) {
-    return prefs.getString(key);
-  }
-
-  Future<void> setInt(String key, int value) async {
-    await prefs.setInt(key, value);
-  }
-
-  int? getInt(String key) {
-    return prefs.getInt(key);
-  }
-
-  Future<void> setBool(String key, bool value) async {
-    await prefs.setBool(key, value);
-  }
-
-  bool? getBool(String key) {
-    return prefs.getBool(key);
+  // Reset
+  Future<void> clearAll() async {
+    await _prefs.clear();
   }
 }

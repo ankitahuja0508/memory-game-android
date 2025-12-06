@@ -1,37 +1,24 @@
 import 'package:equatable/equatable.dart';
 
-/// App-wide state
-enum AppStatus {
-  initial,
-  loading,
-  ready,
-  error,
-}
-
 class AppState extends Equatable {
-  final AppStatus status;
+  final bool isInitialized;
   final bool isFirstLaunch;
-  final String? error;
 
   const AppState({
-    this.status = AppStatus.initial,
+    this.isInitialized = false,
     this.isFirstLaunch = true,
-    this.error,
   });
 
   AppState copyWith({
-    AppStatus? status,
+    bool? isInitialized,
     bool? isFirstLaunch,
-    String? error,
-    bool clearError = false,
   }) {
     return AppState(
-      status: status ?? this.status,
+      isInitialized: isInitialized ?? this.isInitialized,
       isFirstLaunch: isFirstLaunch ?? this.isFirstLaunch,
-      error: clearError ? null : (error ?? this.error),
     );
   }
 
   @override
-  List<Object?> get props => [status, isFirstLaunch, error];
+  List<Object?> get props => [isInitialized, isFirstLaunch];
 }

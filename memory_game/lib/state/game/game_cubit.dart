@@ -2,18 +2,18 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/models.dart';
 import '../../domain/services/services.dart';
+import '../../core/constants/app_constants.dart';
 import 'game_state.dart';
 
-/// Cubit for managing game state
 class GameCubit extends Cubit<GameState> {
   final LevelGeneratorService _levelGenerator;
   final AudioService _audioService;
   final HapticService _hapticService;
 
   Timer? _gameTimer;
+  Timer? _previewTimer;
   Timer? _freezeTimer;
-  Timer? _peekTimer;
-  Timer? _mismatchTimer;
+  Timer? _matchDelayTimer;
 
   GameCubit({
     required LevelGeneratorService levelGenerator,
@@ -24,480 +24,389 @@ class GameCubit extends Cubit<GameState> {
         _hapticService = hapticService,
         super(const GameState());
 
-  /// Start a new game
-  void startGame(int level, {String? themeId}) {
-    _cancelAllTimers();
+  void startLevel(int level, {String? themeId, bool showPreview = true}) {
+    _stopAllTimers();
 
     final config = _levelGenerator.generateLevel(level, themeId: themeId);
     final cards = _levelGenerator.generateCards(config);
 
+    // Start with preview phase - all cards visible
+    final previewCards = cards.map((c) => c.copyWith(state: CardState.preview)).toList();
+
     emit(GameState(
-      status: GameStatus.ready,
-      levelConfig: config,
-      cards: cards,
-    ));
-
-    // Small delay before starting
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (state.status == GameStatus.ready) {
-        emit(state.copyWith(status: GameStatus.playing));
-        _startGameTimer();
-      }
-    });
-  }
-
-  /// Flip a card
-  void flipCard(int index) {
-    if (state.status != GameStatus.playing) return;
-    if (index < 0 || index >= state.cards.length) return;
-
-    final card = state.cards[index];
-
-    // Can't flip matched or already face-up cards
-    if (card.isMatched || card.isFaceUp) return;
-
-    // Already have two cards flipped, waiting for comparison
-    if (state.firstFlippedIndex != null && state.secondFlippedIndex != null) {
-      return;
-    }
-
-    _audioService.playFlip();
-    _hapticService.mediumImpact();
-
-    final updatedCards = List<CardModel>.from(state.cards);
-    updatedCards[index] = card.copyWith(state: CardState.faceUp, isNew: false);
-
-    // Clear hint if this card was hinted
-    List<int> hintedIndices = List.from(state.hintedCardIndices);
-    hintedIndices.remove(index);
-
-    if (state.firstFlippedIndex == null) {
-      // First card of pair
-      emit(state.copyWith(
-        cards: updatedCards,
-        firstFlippedIndex: index,
-        hintedCardIndices: hintedIndices,
-      ));
-    } else {
-      // Second card of pair
-      emit(state.copyWith(
-        cards: updatedCards,
-        secondFlippedIndex: index,
-        moves: state.moves + 1,
-        hintedCardIndices: hintedIndices,
-      ));
-
-      // Check for match
-      _checkMatch(state.firstFlippedIndex!, index);
-    }
-  }
-
-  /// Check if two flipped cards match
-  void _checkMatch(int first, int second) {
-    final firstCard = state.cards[first];
-    final secondCard = state.cards[second];
-
-    if (firstCard.pairId == secondCard.pairId) {
-      // Match!
-      _handleMatch(first, second);
-    } else {
-      // No match
-      _handleMismatch(first, second);
-    }
-  }
-
-  /// Handle a successful match
-  void _handleMatch(int first, int second) {
-    _audioService.playMatch();
-    _hapticService.successVibration();
-
-    final updatedCards = List<CardModel>.from(state.cards);
-    updatedCards[first] = updatedCards[first].copyWith(state: CardState.matched);
-    updatedCards[second] = updatedCards[second].copyWith(state: CardState.matched);
-
-    final newStreak = state.currentStreak + 1;
-    final longestStreak = newStreak > state.longestStreak ? newStreak : state.longestStreak;
-
-    // Calculate streak bonus
-    final streakBonus = newStreak * 5;
-    final coinBonus = state.isDoubleCoinsActive ? streakBonus * 2 : streakBonus;
-
-    emit(state.copyWith(
-      cards: updatedCards,
-      matches: state.matches + 1,
-      currentStreak: newStreak,
-      longestStreak: longestStreak,
-      coinsEarned: state.coinsEarned + coinBonus,
-      clearFirstFlipped: true,
-      clearSecondFlipped: true,
-      canUndo: false,
-      clearLastMismatch: true,
-    ));
-
-    // Check if game is complete
-    if (state.allMatched) {
-      _completeGame();
-    }
-  }
-
-  /// Handle a mismatch
-  void _handleMismatch(int first, int second) {
-    // Use shield if available
-    if (state.hasShield) {
-      emit(state.copyWith(
-        hasShield: false,
-        clearFirstFlipped: true,
-        clearSecondFlipped: true,
-      ));
-      // Flip cards back immediately
-      _flipCardsBack(first, second);
-      return;
-    }
-
-    _audioService.playMismatch();
-    _hapticService.errorVibration();
-
-    emit(state.copyWith(
-      mistakes: state.mistakes + 1,
-      currentStreak: 0,
-      canUndo: true,
-      lastMismatchFirst: first,
-      lastMismatchSecond: second,
-    ));
-
-    // Flip cards back after delay
-    _mismatchTimer?.cancel();
-    _mismatchTimer = Timer(const Duration(milliseconds: 1000), () {
-      _flipCardsBack(first, second);
-    });
-  }
-
-  /// Flip cards back to face down
-  void _flipCardsBack(int first, int second) {
-    if (state.status != GameStatus.playing) return;
-
-    final updatedCards = List<CardModel>.from(state.cards);
-
-    if (first < updatedCards.length && !updatedCards[first].isMatched) {
-      updatedCards[first] = updatedCards[first].copyWith(state: CardState.faceDown);
-    }
-    if (second < updatedCards.length && !updatedCards[second].isMatched) {
-      updatedCards[second] = updatedCards[second].copyWith(state: CardState.faceDown);
-    }
-
-    emit(state.copyWith(
-      cards: updatedCards,
-      clearFirstFlipped: true,
-      clearSecondFlipped: true,
-    ));
-  }
-
-  /// Complete the game
-  void _completeGame() {
-    _cancelAllTimers();
-
-    _audioService.playLevelComplete();
-    _hapticService.celebrationVibration();
-
-    final config = state.levelConfig!;
-    final stars = GameResultCalculator.calculateStars(
-      moves: state.moves,
-      optimalMoves: config.pairs,
-      timeTaken: state.timeElapsed,
-      parTime: config.starThresholds.timeForThree,
-      mistakes: state.mistakes,
-    );
-
-    final baseCoins = GameResultCalculator.calculateCoins(
-      level: config.level,
-      stars: stars,
-      isPerfect: state.isPerfectGame,
-      timeTaken: state.timeElapsed,
-      parTime: config.starThresholds.timeForThree,
-      streak: state.longestStreak,
-    );
-
-    final totalCoins = state.isDoubleCoinsActive ? baseCoins * 2 : baseCoins;
-    final xp = GameResultCalculator.calculateXP(
-      stars: stars,
-      isPerfect: state.isPerfectGame,
-      newAchievements: [],
-    );
-
-    final result = GameResult(
-      level: config.level,
-      stars: stars,
-      moves: state.moves,
-      optimalMoves: config.pairs,
-      timeTaken: state.timeElapsed,
+      phase: showPreview ? GamePhase.preview : GamePhase.playing,
+      level: level,
+      cards: showPreview ? previewCards : cards,
       timeLimit: config.timeLimit,
-      matches: state.matches,
-      mistakes: state.mistakes,
-      longestStreak: state.longestStreak,
-      isPerfect: state.isPerfectGame,
-      coinsEarned: totalCoins,
-      xpEarned: xp,
-      bonusCoins: state.coinsEarned,
-    );
-
-    emit(state.copyWith(
-      status: GameStatus.completed,
-      result: result,
+      levelConfig: config,
+      previewTimeRemaining: const Duration(milliseconds: AppConstants.previewDuration),
     ));
+
+    if (showPreview) {
+      _startPreviewPhase();
+    } else {
+      _startGameTimer();
+    }
   }
 
-  /// Time out - game over
-  void _gameTimeOut() {
-    _cancelAllTimers();
-
-    _audioService.playSound(SoundEffect.gameOver);
-    _hapticService.errorVibration();
-
-    emit(state.copyWith(status: GameStatus.timeOut));
-  }
-
-  /// Start game timer
-  void _startGameTimer() {
-    _gameTimer?.cancel();
-    _gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      if (state.status != GameStatus.playing) {
+  void _startPreviewPhase() {
+    const tickDuration = Duration(milliseconds: 100);
+    _previewTimer = Timer.periodic(tickDuration, (timer) {
+      if (state.phase != GamePhase.preview) {
         timer.cancel();
         return;
       }
 
-      // Don't count time if frozen
-      if (state.isTimeFrozen) {
-        final newFreezeTime = state.freezeTimeRemaining! - const Duration(seconds: 1);
-        if (newFreezeTime.inSeconds <= 0) {
-          emit(state.copyWith(clearFreeze: true));
-        } else {
-          emit(state.copyWith(freezeTimeRemaining: newFreezeTime));
-        }
-        return;
-      }
-
-      final newTime = state.timeElapsed + const Duration(seconds: 1);
-
-      if (newTime >= state.levelConfig!.timeLimit) {
-        _gameTimeOut();
+      final newRemaining = state.previewTimeRemaining - tickDuration;
+      
+      if (newRemaining <= Duration.zero) {
+        timer.cancel();
+        _endPreviewPhase();
       } else {
-        emit(state.copyWith(timeElapsed: newTime));
+        emit(state.copyWith(previewTimeRemaining: newRemaining));
       }
     });
   }
 
-  /// Pause game
-  void pauseGame() {
-    if (state.status != GameStatus.playing) return;
-    _gameTimer?.cancel();
-    emit(state.copyWith(status: GameStatus.paused));
-  }
+  void _endPreviewPhase() {
+    // Hide all cards
+    final hiddenCards = state.cards.map((c) => c.copyWith(state: CardState.faceDown)).toList();
+    
+    emit(state.copyWith(
+      phase: GamePhase.playing,
+      cards: hiddenCards,
+      previewTimeRemaining: Duration.zero,
+    ));
 
-  /// Resume game
-  void resumeGame() {
-    if (state.status != GameStatus.paused) return;
-    emit(state.copyWith(status: GameStatus.playing));
     _startGameTimer();
   }
 
-  /// Use peek power-up
-  void usePeek() {
-    if (state.status != GameStatus.playing || state.isPeekActive) return;
+  void skipPreview() {
+    _previewTimer?.cancel();
+    _endPreviewPhase();
+  }
 
-    _audioService.playPowerUp();
-    _hapticService.mediumImpact();
-
-    // Reveal all cards
-    final updatedCards = state.cards.map((card) {
-      if (!card.isMatched) {
-        return card.copyWith(state: CardState.faceUp);
+  void _startGameTimer() {
+    _gameTimer?.cancel();
+    _gameTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (state.phase != GamePhase.playing) {
+        timer.cancel();
+        return;
       }
-      return card;
-    }).toList();
 
-    emit(state.copyWith(
-      cards: updatedCards,
-      isPeekActive: true,
-      peekTimeRemaining: const Duration(seconds: 3),
-      clearFirstFlipped: true,
-      clearSecondFlipped: true,
-    ));
+      if (!state.isFreezeActive) {
+        final newElapsed = state.elapsedTime + const Duration(seconds: 1);
+        
+        if (state.timeLimit != null && newElapsed >= state.timeLimit!) {
+          timer.cancel();
+          emit(state.copyWith(phase: GamePhase.timeout, elapsedTime: newElapsed));
+          return;
+        }
 
-    // Hide cards after 3 seconds
-    _peekTimer?.cancel();
-    _peekTimer = Timer(const Duration(seconds: 3), () {
-      _endPeek();
+        emit(state.copyWith(elapsedTime: newElapsed));
+      }
     });
   }
 
-  void _endPeek() {
-    if (!state.isPeekActive) return;
+  void flipCard(int index) {
+    if (!state.canInteract) return;
+    if (index < 0 || index >= state.cards.length) return;
 
-    final updatedCards = state.cards.map((card) {
-      if (!card.isMatched) {
-        return card.copyWith(state: CardState.faceDown);
+    final card = state.cards[index];
+    if (!card.canBeFlipped) return;
+
+    _audioService.playFlip();
+    _hapticService.light();
+
+    final newCards = List<CardModel>.from(state.cards);
+    newCards[index] = card.copyWith(state: CardState.faceUp);
+
+    final newSelected = [...state.selectedIndices, index];
+
+    emit(state.copyWith(
+      cards: newCards,
+      selectedIndices: newSelected,
+    ));
+
+    if (newSelected.length == 2) {
+      _checkMatch();
+    }
+  }
+
+  void _checkMatch() {
+    if (state.selectedIndices.length != 2) return;
+
+    final idx1 = state.selectedIndices[0];
+    final idx2 = state.selectedIndices[1];
+    final card1 = state.cards[idx1];
+    final card2 = state.cards[idx2];
+
+    final isMatch = card1.pairId == card2.pairId;
+
+    _matchDelayTimer?.cancel();
+    _matchDelayTimer = Timer(const Duration(milliseconds: 600), () {
+      if (isMatch) {
+        _handleMatch(idx1, idx2);
+      } else {
+        _handleMismatch(idx1, idx2);
       }
-      return card;
+    });
+  }
+
+  void _handleMatch(int idx1, int idx2) {
+    _audioService.playMatch();
+    _hapticService.success();
+
+    final newCards = List<CardModel>.from(state.cards);
+    newCards[idx1] = newCards[idx1].copyWith(state: CardState.matched);
+    newCards[idx2] = newCards[idx2].copyWith(state: CardState.matched);
+
+    final newMatches = state.matches + 1;
+    final newStreak = state.currentStreak + 1;
+    final newLongest = newStreak > state.longestStreak ? newStreak : state.longestStreak;
+
+    emit(state.copyWith(
+      cards: newCards,
+      selectedIndices: [],
+      moves: state.moves + 1,
+      matches: newMatches,
+      currentStreak: newStreak,
+      longestStreak: newLongest,
+    ));
+
+    // Check if game complete
+    if (newMatches >= state.totalPairs) {
+      _completeGame();
+    }
+  }
+
+  void _handleMismatch(int idx1, int idx2) {
+    _audioService.playMismatch();
+    _hapticService.error();
+
+    final newCards = List<CardModel>.from(state.cards);
+    newCards[idx1] = newCards[idx1].copyWith(state: CardState.faceDown);
+    newCards[idx2] = newCards[idx2].copyWith(state: CardState.faceDown);
+
+    emit(state.copyWith(
+      cards: newCards,
+      selectedIndices: [],
+      moves: state.moves + 1,
+      mistakes: state.mistakes + 1,
+      currentStreak: 0,
+    ));
+  }
+
+  void _completeGame() {
+    _stopAllTimers();
+    _audioService.playSuccess();
+    _hapticService.heavy();
+    emit(state.copyWith(phase: GamePhase.completed));
+  }
+
+  // Power-ups
+  void activatePeek() {
+    if (state.phase != GamePhase.playing) return;
+    
+    _audioService.playPowerUp();
+    _hapticService.medium();
+
+    final peekCards = state.cards.map((c) {
+      if (c.state == CardState.faceDown) {
+        return c.copyWith(state: CardState.faceUp);
+      }
+      return c;
     }).toList();
 
-    emit(state.copyWith(
-      cards: updatedCards,
-      isPeekActive: false,
-      clearPeek: true,
-    ));
+    emit(state.copyWith(cards: peekCards, isPeekActive: true));
+
+    Timer(const Duration(seconds: 3), () {
+      if (!state.isPeekActive) return;
+      
+      final hiddenCards = state.cards.map((c) {
+        if (c.state == CardState.faceUp && c.state != CardState.matched) {
+          return c.copyWith(state: CardState.faceDown);
+        }
+        return c;
+      }).toList();
+
+      emit(state.copyWith(cards: hiddenCards, isPeekActive: false));
+    });
   }
 
-  /// Use freeze power-up
-  void useFreeze() {
-    if (state.status != GameStatus.playing || state.isTimeFrozen) return;
+  void activateFreeze() {
+    if (state.phase != GamePhase.playing || state.isFreezeActive) return;
 
     _audioService.playPowerUp();
-    _hapticService.mediumImpact();
+    _hapticService.medium();
 
     emit(state.copyWith(
+      isFreezeActive: true,
       freezeTimeRemaining: const Duration(seconds: 10),
     ));
+
+    _freezeTimer?.cancel();
+    _freezeTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!state.isFreezeActive) {
+        timer.cancel();
+        return;
+      }
+
+      final remaining = state.freezeTimeRemaining! - const Duration(seconds: 1);
+      if (remaining <= Duration.zero) {
+        timer.cancel();
+        emit(state.copyWith(isFreezeActive: false, freezeTimeRemaining: null));
+      } else {
+        emit(state.copyWith(freezeTimeRemaining: remaining));
+      }
+    });
   }
 
-  /// Use hint power-up
-  void useHint() {
-    if (state.status != GameStatus.playing) return;
+  void activateHint() {
+    if (state.phase != GamePhase.playing) return;
+
+    _audioService.playPowerUp();
+    _hapticService.medium();
 
     // Find an unmatched pair
-    final unmatchedCards = <int, CardModel>{};
-    for (int i = 0; i < state.cards.length; i++) {
-      if (!state.cards[i].isMatched && !state.cards[i].isFaceUp) {
-        unmatchedCards[i] = state.cards[i];
+    final unmatchedCards = <int, List<int>>{};
+    for (var i = 0; i < state.cards.length; i++) {
+      final card = state.cards[i];
+      if (card.state != CardState.matched) {
+        unmatchedCards.putIfAbsent(card.pairId, () => []).add(i);
       }
     }
 
     if (unmatchedCards.isEmpty) return;
 
-    // Find a pair
-    int? hintFirst;
-    int? hintSecond;
+    // Get first pair
+    final pairIndices = unmatchedCards.values.first;
+    if (pairIndices.length < 2) return;
 
-    for (final entry1 in unmatchedCards.entries) {
-      for (final entry2 in unmatchedCards.entries) {
-        if (entry1.key != entry2.key &&
-            entry1.value.pairId == entry2.value.pairId) {
-          hintFirst = entry1.key;
-          hintSecond = entry2.key;
-          break;
+    final newCards = List<CardModel>.from(state.cards);
+    newCards[pairIndices[0]] = newCards[pairIndices[0]].copyWith(state: CardState.hinted);
+    newCards[pairIndices[1]] = newCards[pairIndices[1]].copyWith(state: CardState.hinted);
+
+    emit(state.copyWith(cards: newCards));
+
+    // Remove hint after 2 seconds
+    Timer(const Duration(seconds: 2), () {
+      final resetCards = state.cards.map((c) {
+        if (c.state == CardState.hinted) {
+          return c.copyWith(state: CardState.faceDown);
         }
-      }
-      if (hintFirst != null) break;
-    }
-
-    if (hintFirst == null || hintSecond == null) return;
-
-    _audioService.playPowerUp();
-    _hapticService.lightImpact();
-
-    // Mark cards as hinted
-    final updatedCards = List<CardModel>.from(state.cards);
-    updatedCards[hintFirst] = updatedCards[hintFirst].copyWith(state: CardState.hinted);
-    updatedCards[hintSecond] = updatedCards[hintSecond].copyWith(state: CardState.hinted);
-
-    emit(state.copyWith(
-      cards: updatedCards,
-      hintedCardIndices: [hintFirst, hintSecond],
-    ));
+        return c;
+      }).toList();
+      emit(state.copyWith(cards: resetCards));
+    });
   }
 
-  /// Use undo power-up
-  void useUndo() {
-    if (!state.canUndo || state.lastMismatchFirst == null || state.lastMismatchSecond == null) {
-      return;
-    }
+  void activateMagnet() {
+    if (state.phase != GamePhase.playing) return;
 
     _audioService.playPowerUp();
-    _hapticService.lightImpact();
+    _hapticService.heavy();
 
-    // Revert the last mismatch
-    emit(state.copyWith(
-      mistakes: state.mistakes - 1,
-      moves: state.moves - 1,
-      canUndo: false,
-      clearLastMismatch: true,
-    ));
-  }
-
-  /// Use magnet power-up (auto-match one pair)
-  void useMagnet() {
-    if (state.status != GameStatus.playing) return;
-
-    // Find an unmatched pair
-    final unmatchedCards = <int, CardModel>{};
-    for (int i = 0; i < state.cards.length; i++) {
-      if (!state.cards[i].isMatched) {
-        unmatchedCards[i] = state.cards[i];
+    // Find and auto-match one pair
+    final unmatchedCards = <int, List<int>>{};
+    for (var i = 0; i < state.cards.length; i++) {
+      final card = state.cards[i];
+      if (card.state != CardState.matched) {
+        unmatchedCards.putIfAbsent(card.pairId, () => []).add(i);
       }
     }
 
-    // Find a pair
-    int? first;
-    int? second;
+    if (unmatchedCards.isEmpty) return;
 
-    for (final entry1 in unmatchedCards.entries) {
-      for (final entry2 in unmatchedCards.entries) {
-        if (entry1.key != entry2.key &&
-            entry1.value.pairId == entry2.value.pairId) {
-          first = entry1.key;
-          second = entry2.key;
-          break;
-        }
-      }
-      if (first != null) break;
-    }
+    final pairIndices = unmatchedCards.values.first;
+    if (pairIndices.length < 2) return;
 
-    if (first == null || second == null) return;
+    final idx1 = pairIndices[0];
+    final idx2 = pairIndices[1];
 
-    _audioService.playPowerUp();
-    _hapticService.successVibration();
+    final newCards = List<CardModel>.from(state.cards);
+    newCards[idx1] = newCards[idx1].copyWith(state: CardState.matched);
+    newCards[idx2] = newCards[idx2].copyWith(state: CardState.matched);
 
-    // Match the pair
-    final updatedCards = List<CardModel>.from(state.cards);
-    updatedCards[first] = updatedCards[first].copyWith(state: CardState.matched);
-    updatedCards[second] = updatedCards[second].copyWith(state: CardState.matched);
+    final newMatches = state.matches + 1;
 
     emit(state.copyWith(
-      cards: updatedCards,
-      matches: state.matches + 1,
+      cards: newCards,
+      matches: newMatches,
     ));
 
-    // Check if game is complete
-    if (state.matches + 1 >= state.totalPairs) {
+    if (newMatches >= state.totalPairs) {
       _completeGame();
     }
   }
 
-  /// Activate double coins
-  void activateDoubleCoins() {
-    emit(state.copyWith(isDoubleCoinsActive: true));
-  }
-
-  /// Activate shield
-  void activateShield() {
-    emit(state.copyWith(hasShield: true));
-  }
-
-  /// Reset game
-  void resetGame() {
-    _cancelAllTimers();
-    emit(const GameState());
-  }
-
-  void _cancelAllTimers() {
+  void pauseGame() {
+    if (state.phase != GamePhase.playing) return;
     _gameTimer?.cancel();
+    emit(state.copyWith(phase: GamePhase.paused));
+  }
+
+  void resumeGame() {
+    if (state.phase != GamePhase.paused) return;
+    emit(state.copyWith(phase: GamePhase.playing));
+    _startGameTimer();
+  }
+
+  void restartLevel() {
+    startLevel(state.level, themeId: state.levelConfig?.theme.id);
+  }
+
+  GameResult getResult() {
+    final config = state.levelConfig;
+    final optimalMoves = state.totalPairs;
+    
+    final stars = GameResultCalculator.calculateStars(
+      moves: state.moves,
+      optimalMoves: optimalMoves,
+      timeTaken: state.elapsedTime,
+      parTime: config?.starThresholds.timeForThree ?? Duration.zero,
+      mistakes: state.mistakes,
+    );
+
+    final coins = GameResultCalculator.calculateCoins(
+      level: state.level,
+      stars: stars,
+      isPerfect: state.isPerfect,
+      timeTaken: state.elapsedTime,
+      parTime: config?.starThresholds.timeForThree ?? Duration.zero,
+      streak: state.longestStreak,
+    );
+
+    return GameResult(
+      level: state.level,
+      stars: stars,
+      moves: state.moves,
+      optimalMoves: optimalMoves,
+      timeTaken: state.elapsedTime,
+      timeLimit: config?.timeLimit ?? Duration.zero,
+      matches: state.matches,
+      mistakes: state.mistakes,
+      longestStreak: state.longestStreak,
+      isPerfect: state.isPerfect,
+      coinsEarned: coins,
+      xpEarned: GameResultCalculator.calculateXP(
+        stars: stars,
+        isPerfect: state.isPerfect,
+        newAchievements: [],
+      ),
+    );
+  }
+
+  void _stopAllTimers() {
+    _gameTimer?.cancel();
+    _previewTimer?.cancel();
     _freezeTimer?.cancel();
-    _peekTimer?.cancel();
-    _mismatchTimer?.cancel();
+    _matchDelayTimer?.cancel();
   }
 
   @override
   Future<void> close() {
-    _cancelAllTimers();
+    _stopAllTimers();
     return super.close();
   }
 }
