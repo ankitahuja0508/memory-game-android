@@ -25,12 +25,17 @@ class _MenuScreenState extends State<MenuScreen> {
     super.initState();
     _audioService = AudioService.instance;
     
-    // Sync settings and start background music when entering menu
+    // Ensure music is playing when entering menu
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      final playerState = context.read<PlayerCubit>().state;
-      _audioService.updateSettings(playerState.settings);
-      _audioService.startMusic();
+      if (!_audioService.isMusicPlaying) {
+        _audioService.startMusic();
+      }
     });
+  }
+
+  void _onButtonTap(VoidCallback action) {
+    _audioService.playButton();
+    action();
   }
 
   @override
@@ -57,10 +62,7 @@ class _MenuScreenState extends State<MenuScreen> {
                         ),
                         IconGameButton(
                           icon: Icons.settings,
-                          onPressed: () {
-                            _audioService.playButton();
-                            Navigator.pushNamed(context, '/settings');
-                          },
+                          onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/settings')),
                         ),
                       ],
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.3),
@@ -118,10 +120,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       child: GameButton(
                         text: 'PLAY',
                         emoji: '🎮',
-                        onPressed: () {
-                          _audioService.playButton();
-                          Navigator.pushNamed(context, '/levels');
-                        },
+                        onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/levels')),
                         gradient: AppColors.successGradient,
                       ),
                     ).animate().fadeIn(delay: 400.ms).slideY(begin: 0.3),
@@ -136,10 +135,7 @@ class _MenuScreenState extends State<MenuScreen> {
                             child: GameButton(
                               text: 'Shop',
                               emoji: '🛒',
-                              onPressed: () {
-                                _audioService.playButton();
-                                Navigator.pushNamed(context, '/shop');
-                              },
+                              onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/shop')),
                               isOutlined: true,
                               isSmall: true,
                             ),
@@ -149,10 +145,7 @@ class _MenuScreenState extends State<MenuScreen> {
                             child: GameButton(
                               text: 'Rewards',
                               emoji: '🎁',
-                              onPressed: () {
-                                _audioService.playButton();
-                                Navigator.pushNamed(context, '/daily');
-                              },
+                              onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/daily')),
                               isOutlined: true,
                               isSmall: true,
                             ),
@@ -169,10 +162,7 @@ class _MenuScreenState extends State<MenuScreen> {
                       child: GameButton(
                         text: 'Achievements',
                         emoji: '🏆',
-                        onPressed: () {
-                          _audioService.playButton();
-                          Navigator.pushNamed(context, '/achievements');
-                        },
+                        onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/achievements')),
                         isOutlined: true,
                         isSmall: true,
                       ),

@@ -22,14 +22,18 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _initializeApp() async {
-    // Load player data including settings
     final playerCubit = context.read<PlayerCubit>();
+    final audioService = AudioService.instance;
+    
+    // Load player data including settings
     await playerCubit.loadPlayerData();
     
     // Sync audio service with loaded settings
     final playerState = playerCubit.state;
-    final audioService = AudioService.instance;
     audioService.updateSettings(playerState.settings);
+    
+    // Start background music immediately!
+    await audioService.startMusic();
     
     // Small delay for splash animation
     await Future.delayed(const Duration(milliseconds: 1500));

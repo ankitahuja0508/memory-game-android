@@ -58,7 +58,7 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
     _achievementService = AchievementService();
     _dailyRewardService = DailyRewardService();
     
-    // Initialize audio service (singleton)
+    // Initialize audio service (singleton) - this prepares it for playback
     _audioService = AudioService.instance;
     await _audioService.initialize();
     
@@ -94,6 +94,11 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
         listener: (context, state) {
           // Update audio service when settings change
           _audioService.updateSettings(state.settings);
+          
+          // If music was enabled, start it
+          if (state.settings.musicEnabled && !_audioService.isMusicPlaying) {
+            _audioService.startMusic();
+          }
         },
         child: MaterialApp(
           title: 'Memory Match',
