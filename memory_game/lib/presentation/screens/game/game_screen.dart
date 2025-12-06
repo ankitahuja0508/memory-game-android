@@ -57,13 +57,16 @@ class _GameScreenState extends State<GameScreen> {
     final playerCubit = context.read<PlayerCubit>();
     final powerUpId = type.name;
     final count = playerCubit.state.player.getPowerUpCount(powerUpId);
+    final config = PowerUpConfigs.getConfig(type);
 
     if (count <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No ${PowerUpConfigs.getConfig(type).name} power-ups! Buy more in the shop.'),
+          content: Text('No ${config.name} power-ups! Buy more in the shop.'),
+          backgroundColor: AppColors.error,
           action: SnackBarAction(
             label: 'Shop',
+            textColor: Colors.white,
             onPressed: () => Navigator.pushNamed(context, '/shop'),
           ),
         ),
@@ -73,6 +76,22 @@ class _GameScreenState extends State<GameScreen> {
 
     // Use the power-up
     playerCubit.usePowerUp(powerUpId);
+
+    // Show activation feedback
+    ScaffoldMessenger.of(context).clearSnackBars();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            Text(config.icon, style: const TextStyle(fontSize: 20)),
+            const SizedBox(width: 8),
+            Text('${config.name} activated!'),
+          ],
+        ),
+        backgroundColor: AppColors.success,
+        duration: const Duration(seconds: 1),
+      ),
+    );
 
     // Activate the effect
     switch (type) {

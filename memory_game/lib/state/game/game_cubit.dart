@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/models.dart';
 import '../../domain/services/services.dart';
-import '../../core/constants/app_constants.dart';
 import 'game_state.dart';
 
 class GameCubit extends Cubit<GameState> {
@@ -271,20 +270,22 @@ class GameCubit extends Cubit<GameState> {
     _audioService.playPowerUp();
     _hapticService.medium();
 
-    // Find an unmatched pair
+    // Find an unmatched pair (not already flipped or matched)
     final unmatchedCards = <int, List<int>>{};
     for (var i = 0; i < state.cards.length; i++) {
       final card = state.cards[i];
-      if (card.state != CardState.matched) {
+      if (card.state == CardState.faceDown) {
         unmatchedCards.putIfAbsent(card.pairId, () => []).add(i);
       }
     }
 
+    // Filter to only pairs where both cards are available
+    unmatchedCards.removeWhere((key, value) => value.length < 2);
+
     if (unmatchedCards.isEmpty) return;
 
-    // Get first pair
+    // Get first complete pair
     final pairIndices = unmatchedCards.values.first;
-    if (pairIndices.length < 2) return;
 
     final newCards = List<CardModel>.from(state.cards);
     newCards[pairIndices[0]] = newCards[pairIndices[0]].copyWith(state: CardState.hinted);
@@ -292,8 +293,8 @@ class GameCubit extends Cubit<GameState> {
 
     emit(state.copyWith(cards: newCards));
 
-    // Remove hint after 2 seconds
-    Timer(const Duration(seconds: 2), () {
+    // Remove hint after 3 seconds (gives user time to tap both cards)
+    Timer(const Duration(seconds: 3), () {
       final resetCards = state.cards.map((c) {
         if (c.state == CardState.hinted) {
           return c.copyWith(state: CardState.faceDown);
@@ -308,13 +309,13 @@ class GameCubit extends Cubit<GameState> {
     if (state.phase != GamePhase.playing) return;
 
     _audioService.playPowerUp();
-    _hapticService.heavy();
+    _hapticService.medium();
 
     // Find and auto-match one pair
     final unmatchedCards = <int, List<int>>{};
     for (var i = 0; i < state.cards.length; i++) {
       final card = state.cards[i];
-      if (card.state != CardState.matched) {
+      if (card.state != CardState.matched && card.state != CardState.faceUp) {
         unmatchedCards.putIfAbsent(card.pairId, () => []).add(i);
       }
     }
@@ -327,20 +328,37 @@ class GameCubit extends Cubit<GameState> {
     final idx1 = pairIndices[0];
     final idx2 = pairIndices[1];
 
-    final newCards = List<CardModel>.from(state.cards);
-    newCards[idx1] = newCards[idx1].copyWith(state: CardState.matched);
-    newCards[idx2] = newCards[idx2].copyWith(state: CardState.matched);
+    // First, reveal the cards
+    final revealCards = List<CardModel>.from(state.cards);
+    revealCards[idx1] = revealCards[idx1].copyWith(state: CardState.hinted);
+    revealCards[idx2] = revealCards[idx2].copyWith(state: CardState.hinted);
 
-    final newMatches = state.matches + 1;
+    emit(state.copyWith(cards: revealCards));
 
-    emit(state.copyWith(
-      cards: newCards,
-      matches: newMatches,
-    ));
+    // After a brief delay, match them
+    Timer(const Duration(milliseconds: 600), () {
+      _audioService.playMatch();
+      _hapticService.success();
 
-    if (newMatches >= state.totalPairs) {
-      _completeGame();
-    }
+      final matchCards = List<CardModel>.from(state.cards);
+      // Find the cards again in case state changed
+      for (var i = 0; i < matchCards.length; i++) {
+        if (i == idx1 || i == idx2) {
+          matchCards[i] = matchCards[i].copyWith(state: CardState.matched);
+        }
+      }
+
+      final newMatches = state.matches + 1;
+
+      emit(state.copyWith(
+        cards: matchCards,
+        matches: newMatches,
+      ));
+
+      if (newMatches >= state.totalPairs) {
+        _completeGame();
+      }
+    });
   }
 
   void pauseGame() {

@@ -158,6 +158,7 @@ class PlayerModel extends Equatable {
         'peek': AppConstants.startingPeekPowerUps,
         'freeze': AppConstants.startingFreezePowerUps,
         'hint': AppConstants.startingHintPowerUps,
+        'magnet': AppConstants.startingMagnetPowerUps,
       },
     );
   }
