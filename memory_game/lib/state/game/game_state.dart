@@ -1,167 +1,112 @@
 import 'package:equatable/equatable.dart';
 import '../../data/models/models.dart';
 
-/// Game status
-enum GameStatus {
-  initial,
-  ready,
+enum GamePhase {
+  loading,
+  preview,    // NEW: Cards revealed for memorization
   playing,
   paused,
   completed,
-  timeOut,
+  timeout,
 }
 
-/// State for the game screen
 class GameState extends Equatable {
-  final GameStatus status;
-  final LevelConfig? levelConfig;
+  final GamePhase phase;
+  final int level;
   final List<CardModel> cards;
-  final int? firstFlippedIndex;
-  final int? secondFlippedIndex;
+  final List<int> selectedIndices;
   final int moves;
   final int matches;
   final int mistakes;
   final int currentStreak;
   final int longestStreak;
-  final Duration timeElapsed;
-  final Duration? freezeTimeRemaining;
+  final Duration elapsedTime;
+  final Duration? timeLimit;
+  final Duration previewTimeRemaining; // NEW: For preview countdown
   final bool isPeekActive;
-  final Duration? peekTimeRemaining;
-  final List<int> hintedCardIndices;
-  final int coinsEarned;
-  final bool isDoubleCoinsActive;
-  final bool hasShield;
-  final bool canUndo;
-  final int? lastMismatchFirst;
-  final int? lastMismatchSecond;
-  final GameResult? result;
+  final bool isFreezeActive;
+  final Duration? freezeTimeRemaining;
+  final LevelConfig? levelConfig;
 
   const GameState({
-    this.status = GameStatus.initial,
-    this.levelConfig,
+    this.phase = GamePhase.loading,
+    this.level = 1,
     this.cards = const [],
-    this.firstFlippedIndex,
-    this.secondFlippedIndex,
+    this.selectedIndices = const [],
     this.moves = 0,
     this.matches = 0,
     this.mistakes = 0,
     this.currentStreak = 0,
     this.longestStreak = 0,
-    this.timeElapsed = Duration.zero,
-    this.freezeTimeRemaining,
+    this.elapsedTime = Duration.zero,
+    this.timeLimit,
+    this.previewTimeRemaining = Duration.zero,
     this.isPeekActive = false,
-    this.peekTimeRemaining,
-    this.hintedCardIndices = const [],
-    this.coinsEarned = 0,
-    this.isDoubleCoinsActive = false,
-    this.hasShield = false,
-    this.canUndo = false,
-    this.lastMismatchFirst,
-    this.lastMismatchSecond,
-    this.result,
+    this.isFreezeActive = false,
+    this.freezeTimeRemaining,
+    this.levelConfig,
   });
 
-  bool get isPlaying => status == GameStatus.playing;
-  bool get isPaused => status == GameStatus.paused;
-  bool get isCompleted => status == GameStatus.completed;
-  bool get isTimeFrozen => freezeTimeRemaining != null && freezeTimeRemaining!.inSeconds > 0;
+  bool get isPlaying => phase == GamePhase.playing;
+  bool get isPaused => phase == GamePhase.paused;
+  bool get isCompleted => phase == GamePhase.completed;
+  bool get isTimedOut => phase == GamePhase.timeout;
+  bool get isPreview => phase == GamePhase.preview;
+  bool get canInteract => phase == GamePhase.playing && selectedIndices.length < 2;
 
-  int get totalPairs => levelConfig?.pairs ?? 0;
+  int get totalPairs => cards.length ~/ 2;
   int get remainingPairs => totalPairs - matches;
-  bool get allMatched => matches >= totalPairs;
+  bool get allMatched => matches >= totalPairs && totalPairs > 0;
+  bool get isPerfect => mistakes == 0 && allMatched;
 
   Duration get remainingTime {
-    if (levelConfig == null) return Duration.zero;
-    final remaining = levelConfig!.timeLimit - timeElapsed;
+    if (timeLimit == null) return Duration.zero;
+    final remaining = timeLimit! - elapsedTime;
     return remaining.isNegative ? Duration.zero : remaining;
   }
 
-  double get timeProgress {
-    if (levelConfig == null) return 0;
-    return (timeElapsed.inMilliseconds / levelConfig!.timeLimit.inMilliseconds).clamp(0.0, 1.0);
-  }
-
-  bool get isPerfectGame => mistakes == 0;
-
   GameState copyWith({
-    GameStatus? status,
-    LevelConfig? levelConfig,
+    GamePhase? phase,
+    int? level,
     List<CardModel>? cards,
-    int? firstFlippedIndex,
-    int? secondFlippedIndex,
+    List<int>? selectedIndices,
     int? moves,
     int? matches,
     int? mistakes,
     int? currentStreak,
     int? longestStreak,
-    Duration? timeElapsed,
-    Duration? freezeTimeRemaining,
+    Duration? elapsedTime,
+    Duration? timeLimit,
+    Duration? previewTimeRemaining,
     bool? isPeekActive,
-    Duration? peekTimeRemaining,
-    List<int>? hintedCardIndices,
-    int? coinsEarned,
-    bool? isDoubleCoinsActive,
-    bool? hasShield,
-    bool? canUndo,
-    int? lastMismatchFirst,
-    int? lastMismatchSecond,
-    GameResult? result,
-    bool clearFirstFlipped = false,
-    bool clearSecondFlipped = false,
-    bool clearFreeze = false,
-    bool clearPeek = false,
-    bool clearHints = false,
-    bool clearLastMismatch = false,
+    bool? isFreezeActive,
+    Duration? freezeTimeRemaining,
+    LevelConfig? levelConfig,
   }) {
     return GameState(
-      status: status ?? this.status,
-      levelConfig: levelConfig ?? this.levelConfig,
+      phase: phase ?? this.phase,
+      level: level ?? this.level,
       cards: cards ?? this.cards,
-      firstFlippedIndex: clearFirstFlipped ? null : (firstFlippedIndex ?? this.firstFlippedIndex),
-      secondFlippedIndex: clearSecondFlipped ? null : (secondFlippedIndex ?? this.secondFlippedIndex),
+      selectedIndices: selectedIndices ?? this.selectedIndices,
       moves: moves ?? this.moves,
       matches: matches ?? this.matches,
       mistakes: mistakes ?? this.mistakes,
       currentStreak: currentStreak ?? this.currentStreak,
       longestStreak: longestStreak ?? this.longestStreak,
-      timeElapsed: timeElapsed ?? this.timeElapsed,
-      freezeTimeRemaining: clearFreeze ? null : (freezeTimeRemaining ?? this.freezeTimeRemaining),
+      elapsedTime: elapsedTime ?? this.elapsedTime,
+      timeLimit: timeLimit ?? this.timeLimit,
+      previewTimeRemaining: previewTimeRemaining ?? this.previewTimeRemaining,
       isPeekActive: isPeekActive ?? this.isPeekActive,
-      peekTimeRemaining: clearPeek ? null : (peekTimeRemaining ?? this.peekTimeRemaining),
-      hintedCardIndices: clearHints ? const [] : (hintedCardIndices ?? this.hintedCardIndices),
-      coinsEarned: coinsEarned ?? this.coinsEarned,
-      isDoubleCoinsActive: isDoubleCoinsActive ?? this.isDoubleCoinsActive,
-      hasShield: hasShield ?? this.hasShield,
-      canUndo: canUndo ?? this.canUndo,
-      lastMismatchFirst: clearLastMismatch ? null : (lastMismatchFirst ?? this.lastMismatchFirst),
-      lastMismatchSecond: clearLastMismatch ? null : (lastMismatchSecond ?? this.lastMismatchSecond),
-      result: result ?? this.result,
+      isFreezeActive: isFreezeActive ?? this.isFreezeActive,
+      freezeTimeRemaining: freezeTimeRemaining ?? this.freezeTimeRemaining,
+      levelConfig: levelConfig ?? this.levelConfig,
     );
   }
 
   @override
   List<Object?> get props => [
-        status,
-        levelConfig,
-        cards,
-        firstFlippedIndex,
-        secondFlippedIndex,
-        moves,
-        matches,
-        mistakes,
-        currentStreak,
-        longestStreak,
-        timeElapsed,
-        freezeTimeRemaining,
-        isPeekActive,
-        peekTimeRemaining,
-        hintedCardIndices,
-        coinsEarned,
-        isDoubleCoinsActive,
-        hasShield,
-        canUndo,
-        lastMismatchFirst,
-        lastMismatchSecond,
-        result,
-      ];
+    phase, level, cards, selectedIndices, moves, matches, mistakes,
+    currentStreak, longestStreak, elapsedTime, timeLimit, previewTimeRemaining,
+    isPeekActive, isFreezeActive, freezeTimeRemaining, levelConfig,
+  ];
 }

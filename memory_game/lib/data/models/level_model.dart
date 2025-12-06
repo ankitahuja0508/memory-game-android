@@ -1,24 +1,9 @@
 import 'package:equatable/equatable.dart';
 
-/// Difficulty tier for levels
-enum DifficultyTier {
-  beginner,  // 1-10
-  easy,      // 11-30
-  medium,    // 31-60
-  hard,      // 61-100
-  expert,    // 101+
-}
+enum DifficultyTier { beginner, easy, medium, hard, expert }
+enum SpecialLevelType { normal, bonusRound, bossLevel, speedChallenge, memoryMaster }
 
-/// Special level types
-enum SpecialLevelType {
-  normal,
-  bonusRound,
-  bossLevel,
-  speedChallenge,
-  memoryMaster,
-}
-
-/// Theme for card set - renamed to avoid conflict with Flutter's CardTheme
+/// Theme for card set
 class GameCardTheme extends Equatable {
   final String id;
   final String name;
@@ -26,7 +11,6 @@ class GameCardTheme extends Equatable {
   final List<String> symbols;
   final int unlocksAtLevel;
   final int cost;
-  final bool isPremium;
 
   const GameCardTheme({
     required this.id,
@@ -35,35 +19,10 @@ class GameCardTheme extends Equatable {
     required this.symbols,
     this.unlocksAtLevel = 1,
     this.cost = 0,
-    this.isPremium = false,
   });
 
   @override
   List<Object?> get props => [id, name, symbols, unlocksAtLevel];
-
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'icon': icon,
-      'symbols': symbols,
-      'unlocksAtLevel': unlocksAtLevel,
-      'cost': cost,
-      'isPremium': isPremium,
-    };
-  }
-
-  factory GameCardTheme.fromJson(Map<String, dynamic> json) {
-    return GameCardTheme(
-      id: json['id'] as String,
-      name: json['name'] as String,
-      icon: json['icon'] as String,
-      symbols: List<String>.from(json['symbols'] as List),
-      unlocksAtLevel: json['unlocksAtLevel'] as int? ?? 1,
-      cost: json['cost'] as int? ?? 0,
-      isPremium: json['isPremium'] as bool? ?? false,
-    );
-  }
 }
 
 /// Configuration for a game level
@@ -77,6 +36,7 @@ class LevelConfig extends Equatable {
   final SpecialLevelType specialType;
   final DifficultyTier difficulty;
   final StarThresholds starThresholds;
+  final bool showPreview; // Whether to show cards at start
 
   const LevelConfig({
     required this.level,
@@ -88,29 +48,20 @@ class LevelConfig extends Equatable {
     this.specialType = SpecialLevelType.normal,
     required this.difficulty,
     required this.starThresholds,
+    this.showPreview = true, // Default to showing preview
   });
 
   int get totalCards => pairs * 2;
 
   @override
-  List<Object?> get props => [
-        level,
-        pairs,
-        columns,
-        rows,
-        timeLimit,
-        theme,
-        specialType,
-        difficulty,
-      ];
+  List<Object?> get props => [level, pairs, columns, rows, timeLimit, theme, difficulty];
 }
 
-/// Thresholds for earning stars
 class StarThresholds extends Equatable {
-  final int oneStar;   // Max moves for 1 star
-  final int twoStar;   // Max moves for 2 stars
-  final int threeStar; // Max moves for 3 stars
-  final Duration timeForThree; // Time limit for 3 stars
+  final int oneStar;
+  final int twoStar;
+  final int threeStar;
+  final Duration timeForThree;
 
   const StarThresholds({
     required this.oneStar,
@@ -123,7 +74,6 @@ class StarThresholds extends Equatable {
   List<Object?> get props => [oneStar, twoStar, threeStar, timeForThree];
 }
 
-/// Player's progress on a specific level
 class LevelProgress extends Equatable {
   final int level;
   final int stars;
@@ -159,27 +109,23 @@ class LevelProgress extends Equatable {
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'level': level,
-      'stars': stars,
-      'bestMoves': bestMoves,
-      'bestTime': bestTime.inMilliseconds,
-      'completed': completed,
-      'attempts': attempts,
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'level': level,
+    'stars': stars,
+    'bestMoves': bestMoves,
+    'bestTime': bestTime.inMilliseconds,
+    'completed': completed,
+    'attempts': attempts,
+  };
 
-  factory LevelProgress.fromJson(Map<String, dynamic> json) {
-    return LevelProgress(
-      level: json['level'] as int,
-      stars: json['stars'] as int? ?? 0,
-      bestMoves: json['bestMoves'] as int? ?? 0,
-      bestTime: Duration(milliseconds: json['bestTime'] as int? ?? 0),
-      completed: json['completed'] as bool? ?? false,
-      attempts: json['attempts'] as int? ?? 0,
-    );
-  }
+  factory LevelProgress.fromJson(Map<String, dynamic> json) => LevelProgress(
+    level: json['level'] as int,
+    stars: json['stars'] as int? ?? 0,
+    bestMoves: json['bestMoves'] as int? ?? 0,
+    bestTime: Duration(milliseconds: json['bestTime'] as int? ?? 0),
+    completed: json['completed'] as bool? ?? false,
+    attempts: json['attempts'] as int? ?? 0,
+  );
 
   @override
   List<Object?> get props => [level, stars, bestMoves, bestTime, completed, attempts];

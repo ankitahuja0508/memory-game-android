@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/models/game_result_model.dart';
 import '../../widgets/common/star_rating.dart';
 import '../../widgets/common/game_button.dart';
-import '../../widgets/common/animated_counter.dart';
 
-/// Result dialog after completing a level
-class ResultDialog extends StatefulWidget {
+class ResultDialog extends StatelessWidget {
   final GameResult result;
   final VoidCallback onNextLevel;
   final VoidCallback onReplay;
@@ -21,208 +21,159 @@ class ResultDialog extends StatefulWidget {
   });
 
   @override
-  State<ResultDialog> createState() => _ResultDialogState();
-}
-
-class _ResultDialogState extends State<ResultDialog>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 500),
-    );
-    _scaleAnimation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.elasticOut,
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: Dialog(
-        backgroundColor: Colors.transparent,
-        child: Container(
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                AppColors.surface,
-                AppColors.background,
-              ],
-            ),
-            borderRadius: BorderRadius.circular(24),
-            border: Border.all(
-              color: AppColors.primary.withOpacity(0.3),
-              width: 2,
-            ),
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [AppColors.surface, AppColors.backgroundLight],
           ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Title
-              Text(
-                widget.result.isPerfect ? '🎉 Perfect!' : '🎊 Level Complete!',
-                style: const TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(color: AppColors.primary.withAlpha(77)),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withAlpha(51),
+              blurRadius: 24,
+              spreadRadius: 4,
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Title
+            Text(
+              result.isPerfect ? '🎉 PERFECT! 🎉' : '🏆 LEVEL COMPLETE!',
+              style: AppTextStyles.headline2,
+              textAlign: TextAlign.center,
+            )
+                .animate()
+                .fadeIn(duration: 400.ms)
+                .scale(begin: const Offset(0.5, 0.5)),
+
+            const SizedBox(height: 24),
+
+            // Stars
+            AnimatedStarRating(stars: result.stars, size: 48),
+
+            const SizedBox(height: 24),
+
+            // Stats Grid
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.black.withAlpha(51),
+                borderRadius: BorderRadius.circular(16),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Level ${widget.result.level}',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Stars
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List.generate(3, (index) {
-                  return AnimatedStar(
-                    isFilled: index < widget.result.stars,
-                    index: index,
-                    size: 48,
-                    delay: Duration(milliseconds: 300 + (index * 200)),
-                  );
-                }),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Stats
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: AppColors.background,
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Column(
-                  children: [
-                    _StatRow(
-                      icon: '⏱️',
-                      label: 'Time',
-                      value: widget.result.formattedTime,
-                    ),
-                    const Divider(color: AppColors.surface, height: 16),
-                    _StatRow(
-                      icon: '🎯',
-                      label: 'Moves',
-                      value: '${widget.result.moves}',
-                      subValue: 'Optimal: ${widget.result.optimalMoves}',
-                    ),
-                    const Divider(color: AppColors.surface, height: 16),
-                    _StatRow(
-                      icon: '🔥',
-                      label: 'Best Streak',
-                      value: '${widget.result.longestStreak}',
-                    ),
-                    if (widget.result.isPerfect) ...[
-                      const Divider(color: AppColors.surface, height: 16),
-                      const _StatRow(
-                        icon: '💎',
-                        label: 'Perfect Game',
-                        value: 'No mistakes!',
-                        valueColor: AppColors.matchGlow,
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 16),
-
-              // Rewards
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      AppColors.coinColor.withOpacity(0.2),
-                      AppColors.gemColor.withOpacity(0.2),
-                    ],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: AppColors.accent.withOpacity(0.3),
-                  ),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  children: [
-                    AnimatedCurrencyCounter(
-                      value: widget.result.totalCoins,
-                      icon: '💰',
-                      color: AppColors.coinColor,
-                      fontSize: 20,
-                    ),
-                    AnimatedCurrencyCounter(
-                      value: widget.result.xpEarned,
-                      icon: '✨',
-                      color: AppColors.accent,
-                      fontSize: 20,
-                    ),
-                  ],
-                ),
-              ),
-
-              const SizedBox(height: 24),
-
-              // Buttons
-              Row(
+              child: Column(
                 children: [
-                  Expanded(
-                    child: GameButton(
-                      text: 'Home',
-                      emoji: '🏠',
-                      isSmall: true,
-                      gradient: const [Colors.grey, Colors.blueGrey],
-                      onPressed: widget.onHome,
-                    ),
+                  _StatRow(
+                    icon: '⏱️',
+                    label: 'Time',
+                    value: result.formattedTime,
                   ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GameButton(
-                      text: 'Replay',
-                      emoji: '🔄',
-                      isSmall: true,
-                      gradient: const [Colors.orange, Colors.deepOrange],
-                      onPressed: widget.onReplay,
-                    ),
+                  const Divider(color: Colors.white24),
+                  _StatRow(
+                    icon: '👆',
+                    label: 'Moves',
+                    value: '${result.moves} (optimal: ${result.optimalMoves})',
+                  ),
+                  const Divider(color: Colors.white24),
+                  _StatRow(
+                    icon: '🔥',
+                    label: 'Best Streak',
+                    value: result.longestStreak.toString(),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
-              GameButton(
-                text: 'Next Level',
-                emoji: '▶️',
-                width: double.infinity,
-                onPressed: widget.onNextLevel,
+            )
+                .animate()
+                .fadeIn(delay: 500.ms)
+                .slideY(begin: 0.2),
+
+            const SizedBox(height: 16),
+
+            // Rewards
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppColors.coinColor.withAlpha(51),
+                    AppColors.gemColor.withAlpha(51),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
               ),
-            ],
-          ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text('💰', style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '+${result.totalCoins}',
+                    style: AppTextStyles.headline3.copyWith(color: AppColors.coinColor),
+                  ),
+                  const SizedBox(width: 24),
+                  const Text('✨', style: TextStyle(fontSize: 24)),
+                  const SizedBox(width: 8),
+                  Text(
+                    '+${result.xpEarned} XP',
+                    style: AppTextStyles.headline3.copyWith(color: AppColors.secondary),
+                  ),
+                ],
+              ),
+            )
+                .animate()
+                .fadeIn(delay: 700.ms)
+                .shimmer(delay: 900.ms, duration: 1.seconds),
+
+            const SizedBox(height: 24),
+
+            // Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: GameButton(
+                    text: 'Home',
+                    emoji: '🏠',
+                    onPressed: onHome,
+                    isOutlined: true,
+                    isSmall: true,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GameButton(
+                    text: 'Replay',
+                    emoji: '🔄',
+                    onPressed: onReplay,
+                    isOutlined: true,
+                    isSmall: true,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: GameButton(
+                    text: 'Next',
+                    emoji: '➡️',
+                    onPressed: onNextLevel,
+                    gradient: AppColors.successGradient,
+                    isSmall: true,
+                  ),
+                ),
+              ],
+            )
+                .animate()
+                .fadeIn(delay: 900.ms)
+                .slideY(begin: 0.3),
+          ],
         ),
-      ),
+      ).animate().scale(duration: 300.ms, curve: Curves.elasticOut),
     );
   }
 }
@@ -231,54 +182,26 @@ class _StatRow extends StatelessWidget {
   final String icon;
   final String label;
   final String value;
-  final String? subValue;
-  final Color? valueColor;
 
   const _StatRow({
     required this.icon,
     required this.label,
     required this.value,
-    this.subValue,
-    this.valueColor,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Text(icon, style: const TextStyle(fontSize: 20)),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Text(
-            label,
-            style: TextStyle(
-              color: AppColors.textSecondary,
-              fontSize: 14,
-            ),
-          ),
-        ),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                color: valueColor ?? AppColors.textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (subValue != null)
-              Text(
-                subValue!,
-                style: TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 10,
-                ),
-              ),
-          ],
-        ),
-      ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 20)),
+          const SizedBox(width: 12),
+          Text(label, style: AppTextStyles.body2),
+          const Spacer(),
+          Text(value, style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold)),
+        ],
+      ),
     );
   }
 }

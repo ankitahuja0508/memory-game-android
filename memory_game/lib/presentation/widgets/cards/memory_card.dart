@@ -1,257 +1,153 @@
-import 'dart:math' as math;
+import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../data/models/card_model.dart';
 
-/// Memory card widget with flip animation
-class MemoryCard extends StatefulWidget {
+class MemoryCard extends StatelessWidget {
   final CardModel card;
   final VoidCallback? onTap;
-  final bool isInteractive;
   final double size;
+  final bool interactive;
 
   const MemoryCard({
     super.key,
     required this.card,
     this.onTap,
-    this.isInteractive = true,
     this.size = 80,
+    this.interactive = true,
   });
 
   @override
-  State<MemoryCard> createState() => _MemoryCardState();
-}
-
-class _MemoryCardState extends State<MemoryCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _flipAnimation;
-  bool _showFront = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-
-    _flipAnimation = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-
-    _flipAnimation.addListener(() {
-      if (_flipAnimation.value >= 0.5 && !_showFront) {
-        setState(() => _showFront = true);
-      } else if (_flipAnimation.value < 0.5 && _showFront) {
-        setState(() => _showFront = false);
-      }
-    });
-
-    // Set initial state
-    if (widget.card.isRevealed) {
-      _controller.value = 1.0;
-      _showFront = true;
-    }
-  }
-
-  @override
-  void didUpdateWidget(MemoryCard oldWidget) {
-    super.didUpdateWidget(oldWidget);
-
-    if (widget.card.state != oldWidget.card.state) {
-      if (widget.card.isRevealed && !oldWidget.card.isRevealed) {
-        _controller.forward();
-      } else if (!widget.card.isRevealed && oldWidget.card.isRevealed) {
-        _controller.reverse();
-      }
-    }
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final canTap = widget.isInteractive && widget.card.canBeFlipped;
-
     return GestureDetector(
-      onTap: canTap ? widget.onTap : null,
-      child: AnimatedBuilder(
-        animation: _flipAnimation,
-        builder: (context, child) {
-          final angle = _flipAnimation.value * math.pi;
-
-          return Transform(
-            alignment: Alignment.center,
-            transform: Matrix4.identity()
-              ..setEntry(3, 2, 0.001)
-              ..rotateY(angle),
-            child: _showFront
-                ? Transform(
-                    alignment: Alignment.center,
-                    transform: Matrix4.identity()..rotateY(math.pi),
-                    child: _buildFrontFace(),
-                  )
-                : _buildBackFace(),
-          );
-        },
+      onTap: interactive && card.canBeFlipped ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        width: size,
+        height: size,
+        child: _buildCard(),
       ),
     );
   }
 
-  Widget _buildFrontFace() {
-    final isMatched = widget.card.isMatched;
+  Widget _buildCard() {
+    // Determine if card should show front
+    final showFront = card.isFaceUp || card.isMatched || card.isHinted || card.isPreview;
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        color: AppColors.cardFront,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isMatched
-              ? AppColors.matchGlow
-              : AppColors.primary.withOpacity(0.3),
-          width: isMatched ? 3 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isMatched
-                ? AppColors.matchGlow.withOpacity(0.4)
-                : Colors.black26,
-            blurRadius: isMatched ? 15 : 8,
-            spreadRadius: isMatched ? 2 : 0,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Text(
-          widget.card.symbol,
-          style: TextStyle(
-            fontSize: widget.size * 0.5,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackFace() {
-    final isHinted = widget.card.isHinted;
-
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: isHinted
-              ? [AppColors.accent, AppColors.accent.withOpacity(0.8)]
-              : AppColors.cardGradient,
-        ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: isHinted
-              ? AppColors.accent
-              : AppColors.primary.withOpacity(0.5),
-          width: isHinted ? 3 : 1,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: isHinted
-                ? AppColors.accent.withOpacity(0.4)
-                : Colors.black26,
-            blurRadius: isHinted ? 15 : 8,
-            spreadRadius: isHinted ? 2 : 0,
-          ),
-        ],
-      ),
-      child: Center(
-        child: Icon(
-          Icons.question_mark_rounded,
-          color: Colors.white.withOpacity(0.5),
-          size: widget.size * 0.35,
-        ),
-      ),
-    );
-  }
-}
-
-/// Matched card with celebration effect
-class MatchedCard extends StatefulWidget {
-  final CardModel card;
-  final double size;
-
-  const MatchedCard({
-    super.key,
-    required this.card,
-    this.size = 80,
-  });
-
-  @override
-  State<MatchedCard> createState() => _MatchedCardState();
-}
-
-class _MatchedCardState extends State<MatchedCard>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
+    return TweenAnimationBuilder<double>(
+      tween: Tween<double>(begin: showFront ? 0 : pi, end: showFront ? pi : 0),
       duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
+      builder: (context, value, child) {
+        // Determine which side to show based on rotation
+        final showBack = value < pi / 2;
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.1).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
-
-    _controller.forward().then((_) => _controller.reverse());
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _scaleAnimation,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardFront,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: AppColors.matchGlow,
-                width: 3,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.matchGlow.withOpacity(0.5),
-                  blurRadius: 20,
-                  spreadRadius: 2,
-                ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                widget.card.symbol,
-                style: TextStyle(fontSize: widget.size * 0.5),
-              ),
-            ),
-          ),
+        return Transform(
+          alignment: Alignment.center,
+          transform: Matrix4.identity()
+            ..setEntry(3, 2, 0.001)
+            ..rotateY(value),
+          child: showBack ? _buildBackSide() : _buildFrontSide(),
         );
       },
     );
+  }
+
+  Widget _buildBackSide() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppColors.cardGradient,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withAlpha(77),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Center(
+        child: Container(
+          width: size * 0.5,
+          height: size * 0.5,
+          decoration: BoxDecoration(
+            color: Colors.white.withAlpha(51),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: const Center(
+            child: Text('?', style: TextStyle(fontSize: 24, color: Colors.white70)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFrontSide() {
+    Color bgColor = AppColors.cardFront;
+    Color borderColor = Colors.transparent;
+    List<BoxShadow>? shadows;
+
+    if (card.isMatched) {
+      borderColor = AppColors.matchGlow;
+      shadows = [
+        BoxShadow(
+          color: AppColors.matchGlow.withAlpha(128),
+          blurRadius: 12,
+          spreadRadius: 2,
+        ),
+      ];
+    } else if (card.isHinted) {
+      borderColor = AppColors.accent;
+      shadows = [
+        BoxShadow(
+          color: AppColors.accent.withAlpha(128),
+          blurRadius: 12,
+          spreadRadius: 2,
+        ),
+      ];
+    } else if (card.isPreview) {
+      borderColor = AppColors.secondary;
+      bgColor = Colors.white;
+    }
+
+    Widget content = Container(
+      decoration: BoxDecoration(
+        color: bgColor,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor, width: 3),
+        boxShadow: shadows ?? [
+          BoxShadow(
+            color: Colors.black.withAlpha(51),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      // We need to flip this side since parent is rotated 180 degrees
+      child: Transform(
+        alignment: Alignment.center,
+        transform: Matrix4.identity()..rotateY(pi),
+        child: Center(
+          child: Text(
+            card.symbol,
+            style: TextStyle(fontSize: size * 0.5),
+          ),
+        ),
+      ),
+    );
+
+    if (card.isMatched) {
+      content = content
+          .animate(onPlay: (c) => c.forward())
+          .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 200.ms)
+          .then()
+          .scale(begin: const Offset(1.05, 1.05), end: const Offset(1, 1), duration: 200.ms);
+    }
+
+    return content;
   }
 }

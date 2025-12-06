@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import '../../core/constants/app_constants.dart';
 
 /// Player profile and progress data
 class PlayerModel extends Equatable {
@@ -21,13 +22,12 @@ class PlayerModel extends Equatable {
   final String equippedTheme;
   final Map<String, int> powerUpInventory;
   final int hintsRemaining;
-  final DateTime? lastHintRefresh;
 
   const PlayerModel({
     required this.id,
     this.name = 'Player',
-    this.coins = 100,
-    this.gems = 10,
+    this.coins = AppConstants.startingCoins,
+    this.gems = AppConstants.startingGems,
     this.xp = 0,
     this.playerLevel = 1,
     this.currentGameLevel = 1,
@@ -43,20 +43,14 @@ class PlayerModel extends Equatable {
     this.equippedTheme = 'animals',
     this.powerUpInventory = const {},
     this.hintsRemaining = 3,
-    this.lastHintRefresh,
   });
 
-  /// Calculate XP required for next level
   int get xpForNextLevel => (100 * (1.15 * playerLevel)).round();
-
-  /// Calculate current level progress percentage
   double get levelProgress => xp / xpForNextLevel;
 
-  /// Check if player can afford a purchase
   bool canAffordCoins(int amount) => coins >= amount;
   bool canAffordGems(int amount) => gems >= amount;
 
-  /// Get power-up count
   int getPowerUpCount(String powerUpId) => powerUpInventory[powerUpId] ?? 0;
 
   PlayerModel copyWith({
@@ -79,7 +73,6 @@ class PlayerModel extends Equatable {
     String? equippedTheme,
     Map<String, int>? powerUpInventory,
     int? hintsRemaining,
-    DateTime? lastHintRefresh,
   }) {
     return PlayerModel(
       id: id ?? this.id,
@@ -101,98 +94,78 @@ class PlayerModel extends Equatable {
       equippedTheme: equippedTheme ?? this.equippedTheme,
       powerUpInventory: powerUpInventory ?? this.powerUpInventory,
       hintsRemaining: hintsRemaining ?? this.hintsRemaining,
-      lastHintRefresh: lastHintRefresh ?? this.lastHintRefresh,
     );
   }
 
-  Map<String, dynamic> toJson() {
-    return {
-      'id': id,
-      'name': name,
-      'coins': coins,
-      'gems': gems,
-      'xp': xp,
-      'playerLevel': playerLevel,
-      'currentGameLevel': currentGameLevel,
-      'totalStars': totalStars,
-      'totalGamesPlayed': totalGamesPlayed,
-      'perfectGames': perfectGames,
-      'longestStreak': longestStreak,
-      'currentDailyStreak': currentDailyStreak,
-      'lastPlayedDate': lastPlayedDate?.toIso8601String(),
-      'lastDailyRewardClaim': lastDailyRewardClaim?.toIso8601String(),
-      'dailyRewardDay': dailyRewardDay,
-      'unlockedThemes': unlockedThemes,
-      'equippedTheme': equippedTheme,
-      'powerUpInventory': powerUpInventory,
-      'hintsRemaining': hintsRemaining,
-      'lastHintRefresh': lastHintRefresh?.toIso8601String(),
-    };
-  }
+  Map<String, dynamic> toJson() => {
+    'id': id,
+    'name': name,
+    'coins': coins,
+    'gems': gems,
+    'xp': xp,
+    'playerLevel': playerLevel,
+    'currentGameLevel': currentGameLevel,
+    'totalStars': totalStars,
+    'totalGamesPlayed': totalGamesPlayed,
+    'perfectGames': perfectGames,
+    'longestStreak': longestStreak,
+    'currentDailyStreak': currentDailyStreak,
+    'lastPlayedDate': lastPlayedDate?.toIso8601String(),
+    'lastDailyRewardClaim': lastDailyRewardClaim?.toIso8601String(),
+    'dailyRewardDay': dailyRewardDay,
+    'unlockedThemes': unlockedThemes,
+    'equippedTheme': equippedTheme,
+    'powerUpInventory': powerUpInventory,
+    'hintsRemaining': hintsRemaining,
+  };
 
-  factory PlayerModel.fromJson(Map<String, dynamic> json) {
-    return PlayerModel(
-      id: json['id'] as String,
-      name: json['name'] as String? ?? 'Player',
-      coins: json['coins'] as int? ?? 100,
-      gems: json['gems'] as int? ?? 10,
-      xp: json['xp'] as int? ?? 0,
-      playerLevel: json['playerLevel'] as int? ?? 1,
-      currentGameLevel: json['currentGameLevel'] as int? ?? 1,
-      totalStars: json['totalStars'] as int? ?? 0,
-      totalGamesPlayed: json['totalGamesPlayed'] as int? ?? 0,
-      perfectGames: json['perfectGames'] as int? ?? 0,
-      longestStreak: json['longestStreak'] as int? ?? 0,
-      currentDailyStreak: json['currentDailyStreak'] as int? ?? 0,
-      lastPlayedDate: json['lastPlayedDate'] != null
-          ? DateTime.parse(json['lastPlayedDate'] as String)
-          : null,
-      lastDailyRewardClaim: json['lastDailyRewardClaim'] != null
-          ? DateTime.parse(json['lastDailyRewardClaim'] as String)
-          : null,
-      dailyRewardDay: json['dailyRewardDay'] as int? ?? 0,
-      unlockedThemes: json['unlockedThemes'] != null
-          ? List<String>.from(json['unlockedThemes'] as List)
-          : const ['animals'],
-      equippedTheme: json['equippedTheme'] as String? ?? 'animals',
-      powerUpInventory: json['powerUpInventory'] != null
-          ? Map<String, int>.from(json['powerUpInventory'] as Map)
-          : const {},
-      hintsRemaining: json['hintsRemaining'] as int? ?? 3,
-      lastHintRefresh: json['lastHintRefresh'] != null
-          ? DateTime.parse(json['lastHintRefresh'] as String)
-          : null,
-    );
-  }
+  factory PlayerModel.fromJson(Map<String, dynamic> json) => PlayerModel(
+    id: json['id'] as String,
+    name: json['name'] as String? ?? 'Player',
+    coins: json['coins'] as int? ?? AppConstants.startingCoins,
+    gems: json['gems'] as int? ?? AppConstants.startingGems,
+    xp: json['xp'] as int? ?? 0,
+    playerLevel: json['playerLevel'] as int? ?? 1,
+    currentGameLevel: json['currentGameLevel'] as int? ?? 1,
+    totalStars: json['totalStars'] as int? ?? 0,
+    totalGamesPlayed: json['totalGamesPlayed'] as int? ?? 0,
+    perfectGames: json['perfectGames'] as int? ?? 0,
+    longestStreak: json['longestStreak'] as int? ?? 0,
+    currentDailyStreak: json['currentDailyStreak'] as int? ?? 0,
+    lastPlayedDate: json['lastPlayedDate'] != null
+        ? DateTime.parse(json['lastPlayedDate'] as String)
+        : null,
+    lastDailyRewardClaim: json['lastDailyRewardClaim'] != null
+        ? DateTime.parse(json['lastDailyRewardClaim'] as String)
+        : null,
+    dailyRewardDay: json['dailyRewardDay'] as int? ?? 0,
+    unlockedThemes: json['unlockedThemes'] != null
+        ? List<String>.from(json['unlockedThemes'] as List)
+        : const ['animals'],
+    equippedTheme: json['equippedTheme'] as String? ?? 'animals',
+    powerUpInventory: json['powerUpInventory'] != null
+        ? Map<String, int>.from(json['powerUpInventory'] as Map)
+        : const {},
+    hintsRemaining: json['hintsRemaining'] as int? ?? 3,
+  );
 
   factory PlayerModel.newPlayer() {
     return PlayerModel(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       lastPlayedDate: DateTime.now(),
+      // Give starting power-ups!
+      powerUpInventory: const {
+        'peek': AppConstants.startingPeekPowerUps,
+        'freeze': AppConstants.startingFreezePowerUps,
+        'hint': AppConstants.startingHintPowerUps,
+      },
     );
   }
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        coins,
-        gems,
-        xp,
-        playerLevel,
-        currentGameLevel,
-        totalStars,
-        totalGamesPlayed,
-        perfectGames,
-        longestStreak,
-        currentDailyStreak,
-        lastPlayedDate,
-        lastDailyRewardClaim,
-        dailyRewardDay,
-        unlockedThemes,
-        equippedTheme,
-        powerUpInventory,
-        hintsRemaining,
-        lastHintRefresh,
-      ];
+    id, name, coins, gems, xp, playerLevel, currentGameLevel,
+    totalStars, totalGamesPlayed, perfectGames, longestStreak,
+    currentDailyStreak, unlockedThemes, equippedTheme, powerUpInventory,
+  ];
 }

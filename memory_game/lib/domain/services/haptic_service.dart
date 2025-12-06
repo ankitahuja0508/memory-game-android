@@ -1,59 +1,40 @@
 import 'package:flutter/services.dart';
+import '../../data/models/settings_model.dart';
 
-/// Service for haptic feedback
 class HapticService {
-  bool _enabled = true;
+  SettingsModel _settings = const SettingsModel();
 
-  bool get enabled => _enabled;
-
-  void setEnabled(bool enabled) {
-    _enabled = enabled;
+  void updateSettings(SettingsModel settings) {
+    _settings = settings;
   }
 
-  /// Light impact - for button taps
-  Future<void> lightImpact() async {
-    if (!_enabled) return;
-    await HapticFeedback.lightImpact();
+  void light() {
+    if (!_settings.vibrationEnabled) return;
+    HapticFeedback.lightImpact();
   }
 
-  /// Medium impact - for card flips
-  Future<void> mediumImpact() async {
-    if (!_enabled) return;
-    await HapticFeedback.mediumImpact();
+  void medium() {
+    if (!_settings.vibrationEnabled) return;
+    HapticFeedback.mediumImpact();
   }
 
-  /// Heavy impact - for matches
-  Future<void> heavyImpact() async {
-    if (!_enabled) return;
-    await HapticFeedback.heavyImpact();
+  void heavy() {
+    if (!_settings.vibrationEnabled) return;
+    HapticFeedback.heavyImpact();
   }
 
-  /// Selection click
-  Future<void> selectionClick() async {
-    if (!_enabled) return;
-    await HapticFeedback.selectionClick();
+  void selection() {
+    if (!_settings.vibrationEnabled) return;
+    HapticFeedback.selectionClick();
   }
 
-  /// Vibrate pattern for mismatch
-  Future<void> errorVibration() async {
-    if (!_enabled) return;
-    await HapticFeedback.vibrate();
+  void success() {
+    if (!_settings.vibrationEnabled) return;
+    HapticFeedback.mediumImpact();
   }
 
-  /// Success vibration pattern
-  Future<void> successVibration() async {
-    if (!_enabled) return;
-    await HapticFeedback.heavyImpact();
-    await Future.delayed(const Duration(milliseconds: 100));
-    await HapticFeedback.lightImpact();
-  }
-
-  /// Level complete celebration
-  Future<void> celebrationVibration() async {
-    if (!_enabled) return;
-    for (int i = 0; i < 3; i++) {
-      await HapticFeedback.mediumImpact();
-      await Future.delayed(const Duration(milliseconds: 150));
-    }
+  void error() {
+    if (!_settings.vibrationEnabled) return;
+    HapticFeedback.vibrate();
   }
 }

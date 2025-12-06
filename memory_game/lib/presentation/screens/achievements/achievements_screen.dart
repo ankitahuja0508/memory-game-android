@@ -1,157 +1,96 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:percent_indicator/circular_percent_indicator.dart';
+import 'package:percent_indicator/linear_percent_indicator.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/constants/app_strings.dart';
+import '../../../core/theme/app_theme.dart';
 import '../../../data/models/achievement_model.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
-import '../../widgets/common/game_button.dart';
 
-/// Achievements screen
 class AchievementsScreen extends StatelessWidget {
   const AchievementsScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: GradientBackground(
-        child: SafeArea(
-          child: BlocBuilder<PlayerCubit, PlayerState>(
-            builder: (context, state) {
-              final completedCount = state.achievementProgress.values
-                  .where((p) => p.isCompleted)
-                  .length;
-              final totalCount = Achievements.all.length;
-
-              return Column(
-                children: [
-                  // Header
-                  Padding(
-                    padding: const EdgeInsets.all(16),
-                    child: Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(
-                            Icons.arrow_back_ios,
-                            color: AppColors.textPrimary,
-                          ),
-                          onPressed: () => Navigator.pop(context),
-                        ),
-                        const Expanded(
-                          child: Text(
-                            AppStrings.achievementsTitle,
-                            style: TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.textPrimary,
-                            ),
-                            textAlign: TextAlign.center,
-                          ),
-                        ),
-                        const SizedBox(width: 48),
-                      ],
-                    ),
-                  ),
-
-                  // Progress summary
-                  Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 16),
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: AppColors.surface,
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        CircularPercentIndicator(
-                          radius: 50,
-                          lineWidth: 10,
-                          percent: completedCount / totalCount,
-                          center: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                '$completedCount',
-                                style: const TextStyle(
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.bold,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              Text(
-                                '/ $totalCount',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondary,
-                                ),
-                              ),
-                            ],
-                          ),
-                          progressColor: AppColors.primary,
-                          backgroundColor: AppColors.background,
-                          circularStrokeCap: CircularStrokeCap.round,
-                        ),
-                        const SizedBox(width: 24),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              '🏆 Achievements',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: AppColors.textPrimary,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              '${(completedCount / totalCount * 100).toStringAsFixed(0)}% Complete',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 16),
-
-                  // Achievement list
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.all(16),
-                      itemCount: Achievements.all.length,
-                      itemBuilder: (context, index) {
-                        final achievement = Achievements.all[index];
-                        final progress =
-                            state.achievementProgress[achievement.id];
-                        final isCompleted = progress?.isCompleted ?? false;
-                        final isClaimed = progress?.isRewardClaimed ?? false;
-                        final currentValue = progress?.currentValue ?? 0;
-
-                        return _AchievementTile(
-                          achievement: achievement,
-                          isCompleted: isCompleted,
-                          isClaimed: isClaimed,
-                          currentValue: currentValue,
-                          onClaim: () {
-                            context
-                                .read<PlayerCubit>()
-                                .claimAchievementReward(achievement.id);
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              );
-            },
+    return GradientBackground(
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+            onPressed: () => Navigator.pop(context),
           ),
+          title: Text('Achievements', style: AppTextStyles.headline3),
+          centerTitle: true,
+        ),
+        body: BlocBuilder<PlayerCubit, PlayerState>(
+          builder: (context, state) {
+            final completedCount = state.achievementProgress.values.where((p) => p.isCompleted).length;
+            final totalCount = Achievements.all.length;
+            final progress = totalCount > 0 ? completedCount / totalCount : 0.0;
+
+            return Column(
+              children: [
+                // Progress Header
+                Container(
+                  margin: const EdgeInsets.all(16),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: AppColors.primaryGradient),
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  child: Column(
+                    children: [
+                      const Text('🏆', style: TextStyle(fontSize: 48)),
+                      const SizedBox(height: 8),
+                      Text('$completedCount / $totalCount Completed', style: AppTextStyles.headline3),
+                      const SizedBox(height: 16),
+                      LinearPercentIndicator(
+                        lineHeight: 12,
+                        percent: progress,
+                        backgroundColor: Colors.white.withAlpha(51),
+                        progressColor: AppColors.accent,
+                        barRadius: const Radius.circular(6),
+                        animation: true,
+                        animationDuration: 1000,
+                      ),
+                      const SizedBox(height: 8),
+                      Text('${(progress * 100).toInt()}%', style: AppTextStyles.body2),
+                    ],
+                  ),
+                ).animate().fadeIn().slideY(begin: -0.2),
+
+                // Achievement List
+                Expanded(
+                  child: ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: Achievements.all.length,
+                    itemBuilder: (context, index) {
+                      final achievement = Achievements.all[index];
+                      final progress = state.achievementProgress[achievement.id];
+                      final isCompleted = progress?.isCompleted ?? false;
+                      final isRewardClaimed = progress?.isRewardClaimed ?? false;
+                      final currentValue = progress?.currentValue ?? 0;
+
+                      return _AchievementTile(
+                        achievement: achievement,
+                        currentValue: currentValue,
+                        isCompleted: isCompleted,
+                        isRewardClaimed: isRewardClaimed,
+                        onClaimReward: () {
+                          context.read<PlayerCubit>().claimAchievementReward(achievement.id);
+                        },
+                      ).animate(delay: Duration(milliseconds: 50 * index)).fadeIn().slideX(begin: 0.1);
+                    },
+                  ),
+                ),
+              ],
+            );
+          },
         ),
       ),
     );
@@ -160,162 +99,118 @@ class AchievementsScreen extends StatelessWidget {
 
 class _AchievementTile extends StatelessWidget {
   final Achievement achievement;
-  final bool isCompleted;
-  final bool isClaimed;
   final int currentValue;
-  final VoidCallback onClaim;
+  final bool isCompleted;
+  final bool isRewardClaimed;
+  final VoidCallback onClaimReward;
 
   const _AchievementTile({
     required this.achievement,
-    required this.isCompleted,
-    required this.isClaimed,
     required this.currentValue,
-    required this.onClaim,
+    required this.isCompleted,
+    required this.isRewardClaimed,
+    required this.onClaimReward,
   });
 
   @override
   Widget build(BuildContext context) {
-    final progress = currentValue / achievement.targetValue;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppColors.surface,
+        color: isCompleted
+            ? AppColors.success.withAlpha(26)
+            : AppColors.surface.withAlpha(179),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isCompleted
-              ? AppColors.accent.withOpacity(0.5)
-              : AppColors.primary.withOpacity(0.2),
-          width: isCompleted ? 2 : 1,
+          color: isCompleted ? AppColors.success.withAlpha(128) : Colors.transparent,
         ),
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            // Icon
-            Container(
-              width: 56,
-              height: 56,
-              decoration: BoxDecoration(
-                color: isCompleted
-                    ? AppColors.accent.withOpacity(0.2)
-                    : AppColors.background,
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Center(
-                child: Text(
-                  achievement.icon,
-                  style: TextStyle(
-                    fontSize: 28,
-                    color: isCompleted ? null : Colors.grey,
-                  ),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: isCompleted ? AppColors.success.withAlpha(51) : AppColors.primary.withAlpha(51),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Center(
+              child: Text(
+                achievement.icon,
+                style: TextStyle(
+                  fontSize: 28,
+                  color: isCompleted ? null : Colors.grey,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    achievement.title,
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      color: isCompleted
-                          ? AppColors.textPrimary
-                          : AppColors.textSecondary,
-                    ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  achievement.title,
+                  style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 4),
+                Text(achievement.description, style: AppTextStyles.caption),
+                if (achievement.targetValue > 1 && !isCompleted) ...[
+                  const SizedBox(height: 8),
+                  LinearPercentIndicator(
+                    lineHeight: 6,
+                    percent: (currentValue / achievement.targetValue).clamp(0.0, 1.0),
+                    backgroundColor: Colors.white.withAlpha(26),
+                    progressColor: AppColors.primary,
+                    barRadius: const Radius.circular(3),
+                    padding: EdgeInsets.zero,
                   ),
-                  const SizedBox(height: 2),
+                  const SizedBox(height: 4),
                   Text(
-                    achievement.description,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
+                    '$currentValue / ${achievement.targetValue}',
+                    style: AppTextStyles.caption,
                   ),
-                  if (!isCompleted && achievement.targetValue > 1) ...[
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: progress.clamp(0.0, 1.0),
-                              backgroundColor: AppColors.background,
-                              valueColor: const AlwaysStoppedAnimation(
-                                AppColors.primary,
-                              ),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          '$currentValue/${achievement.targetValue}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                  if (isCompleted) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: achievement.rewards
-                          .map((r) => Container(
-                                margin: const EdgeInsets.only(right: 8),
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 6,
-                                  vertical: 2,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: AppColors.accent.withOpacity(0.2),
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  r.displayText,
-                                  style: const TextStyle(
-                                    fontSize: 10,
-                                    color: AppColors.accent,
-                                  ),
-                                ),
-                              ))
-                          .toList(),
-                    ),
-                  ],
                 ],
-              ),
+                if (isCompleted) ...[
+                  const SizedBox(height: 4),
+                  Row(
+                    children: achievement.rewards.map((r) {
+                      return Container(
+                        margin: const EdgeInsets.only(right: 8),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.accent.withAlpha(51),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          r.displayText,
+                          style: AppTextStyles.caption.copyWith(color: AppColors.accent),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
             ),
-
-            // Claim button
-            if (isCompleted && !isClaimed)
-              GameButton(
-                text: 'Claim',
-                isSmall: true,
-                onPressed: onClaim,
-              )
-            else if (isClaimed)
-              Container(
-                padding: const EdgeInsets.all(8),
+          ),
+          if (isCompleted && !isRewardClaimed)
+            GestureDetector(
+              onTap: onClaimReward,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 decoration: BoxDecoration(
-                  color: AppColors.success.withOpacity(0.2),
-                  shape: BoxShape.circle,
+                  gradient: const LinearGradient(colors: AppColors.successGradient),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-                child: const Icon(
-                  Icons.check,
-                  color: AppColors.success,
-                  size: 20,
-                ),
+                child: Text('Claim', style: AppTextStyles.body2.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
               ),
-          ],
-        ),
+            )
+          else if (isRewardClaimed)
+            const Icon(Icons.check_circle, color: AppColors.success, size: 28)
+          else
+            Icon(Icons.lock_outline, color: Colors.white.withAlpha(77), size: 28),
+        ],
       ),
     );
   }

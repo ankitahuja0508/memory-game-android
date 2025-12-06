@@ -1,169 +1,99 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
+import '../../../core/theme/app_theme.dart';
 
-/// Custom game button with gradient
-class GameButton extends StatefulWidget {
+class GameButton extends StatelessWidget {
   final String text;
-  final VoidCallback? onPressed;
-  final List<Color>? gradient;
-  final double? width;
-  final double height;
+  final VoidCallback onPressed;
   final IconData? icon;
   final String? emoji;
-  final bool isLoading;
+  final List<Color>? gradient;
+  final bool isOutlined;
   final bool isSmall;
+  final bool isDisabled;
 
   const GameButton({
     super.key,
     required this.text,
-    this.onPressed,
-    this.gradient,
-    this.width,
-    this.height = 56,
+    required this.onPressed,
     this.icon,
     this.emoji,
-    this.isLoading = false,
+    this.gradient,
+    this.isOutlined = false,
     this.isSmall = false,
+    this.isDisabled = false,
   });
 
   @override
-  State<GameButton> createState() => _GameButtonState();
-}
-
-class _GameButtonState extends State<GameButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 100),
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final buttonHeight = widget.isSmall ? 44.0 : widget.height;
-    final fontSize = widget.isSmall ? 14.0 : 18.0;
+    final colors = gradient ?? AppColors.primaryGradient;
 
     return GestureDetector(
-      onTapDown: (_) => _controller.forward(),
-      onTapUp: (_) {
-        _controller.reverse();
-        widget.onPressed?.call();
-      },
-      onTapCancel: () => _controller.reverse(),
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: child,
-          );
-        },
-        child: Container(
-          width: widget.width,
-          height: buttonHeight,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: widget.gradient ?? AppColors.primaryGradient,
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(buttonHeight / 2),
-            boxShadow: [
-              BoxShadow(
-                color: (widget.gradient?.first ?? AppColors.primary)
-                    .withOpacity(0.4),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
+      onTap: isDisabled ? null : onPressed,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: EdgeInsets.symmetric(
+          horizontal: isSmall ? 16 : 24,
+          vertical: isSmall ? 8 : 12,
+        ),
+        decoration: BoxDecoration(
+          gradient: isOutlined ? null : LinearGradient(colors: colors),
+          borderRadius: BorderRadius.circular(isSmall ? 12 : 16),
+          border: isOutlined ? Border.all(color: colors.first, width: 2) : null,
+          boxShadow: isOutlined
+              ? null
+              : [
+                  BoxShadow(
+                    color: colors.first.withAlpha(77),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            if (emoji != null) ...[
+              Text(emoji!, style: TextStyle(fontSize: isSmall ? 16 : 20)),
+              const SizedBox(width: 8),
             ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: InkWell(
-              borderRadius: BorderRadius.circular(buttonHeight / 2),
-              onTap: widget.isLoading ? null : widget.onPressed,
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: widget.isSmall ? 16 : 24,
-                ),
-                child: Row(
-                  mainAxisSize:
-                      widget.width == null ? MainAxisSize.min : MainAxisSize.max,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    if (widget.isLoading)
-                      const SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    else ...[
-                      if (widget.emoji != null) ...[
-                        Text(
-                          widget.emoji!,
-                          style: TextStyle(fontSize: fontSize + 4),
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      if (widget.icon != null) ...[
-                        Icon(
-                          widget.icon,
-                          color: Colors.white,
-                          size: fontSize + 4,
-                        ),
-                        const SizedBox(width: 8),
-                      ],
-                      Text(
-                        widget.text,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: fontSize,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+            if (icon != null) ...[
+              Icon(icon, size: isSmall ? 18 : 22, color: Colors.white),
+              const SizedBox(width: 8),
+            ],
+            Text(
+              text,
+              style: isSmall
+                  ? AppTextStyles.body2.copyWith(
+                      color: isOutlined ? colors.first : Colors.white,
+                      fontWeight: FontWeight.bold,
+                    )
+                  : AppTextStyles.button.copyWith(
+                      color: isOutlined ? colors.first : Colors.white,
+                    ),
             ),
-          ),
+          ],
         ),
       ),
+    ).animate().scale(
+      duration: 100.ms,
+      curve: Curves.easeOut,
     );
   }
 }
 
-/// Icon button with circle background
-class GameIconButton extends StatelessWidget {
-  final IconData? icon;
-  final String? emoji;
-  final VoidCallback? onPressed;
+class IconGameButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
   final Color? color;
   final double size;
 
-  const GameIconButton({
+  const IconGameButton({
     super.key,
-    this.icon,
-    this.emoji,
-    this.onPressed,
+    required this.icon,
+    required this.onPressed,
     this.color,
     this.size = 48,
   });
@@ -176,28 +106,17 @@ class GameIconButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: color ?? AppColors.surface,
+          color: (color ?? AppColors.surface).withAlpha(204),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.black.withAlpha(51),
               blurRadius: 8,
               offset: const Offset(0, 2),
             ),
           ],
         ),
-        child: Center(
-          child: emoji != null
-              ? Text(
-                  emoji!,
-                  style: TextStyle(fontSize: size * 0.5),
-                )
-              : Icon(
-                  icon,
-                  color: AppColors.textPrimary,
-                  size: size * 0.5,
-                ),
-        ),
+        child: Icon(icon, color: Colors.white, size: size * 0.5),
       ),
     );
   }

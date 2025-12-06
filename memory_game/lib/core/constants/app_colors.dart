@@ -75,11 +75,6 @@ class AppColors {
     Color(0xFF9D97FF),
   ];
 
-  static const List<Color> goldGradient = [
-    Color(0xFFFFD700),
-    Color(0xFFFFA500),
-  ];
-
   static const List<Color> successGradient = [
     Color(0xFF4CAF50),
     Color(0xFF8BC34A),
