@@ -3,6 +3,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/game_result_model.dart';
+import '../../../domain/services/audio_service.dart';
 import '../../widgets/common/star_rating.dart';
 
 class ResultDialog extends StatelessWidget {
@@ -18,6 +19,25 @@ class ResultDialog extends StatelessWidget {
     required this.onReplay,
     required this.onHome,
   });
+
+  void _playButtonSound() {
+    AudioService.instance.playButton();
+  }
+
+  String _getTitle() {
+    if (result.isPerfect) return '🎉 PERFECT! 🎉';
+    if (result.stars == 3) return '⭐ EXCELLENT! ⭐';
+    if (result.stars == 2) return '👍 WELL DONE!';
+    return '✅ COMPLETE!';
+  }
+
+  String _getSubtitle() {
+    if (result.isPerfect) return 'Flawless victory!';
+    if (result.stars == 3) return 'Outstanding performance!';
+    if (result.stars == 2) return 'Good job! Keep improving!';
+    if (result.longestStreak >= 3) return 'Nice streak of ${result.longestStreak}!';
+    return 'Try again for more stars!';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,15 +66,37 @@ class ResultDialog extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            // Level indicator
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withAlpha(40),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                'Level ${result.level}',
+                style: AppTextStyles.body2.copyWith(
+                  color: AppColors.primary,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ).animate().fadeIn().scale(),
+
+            const SizedBox(height: 12),
+
             // Title
-            Text(
-              result.isPerfect ? '🎉 PERFECT! 🎉' : '🏆 COMPLETE!',
-              style: AppTextStyles.headline2,
-              textAlign: TextAlign.center,
-            )
+            Text(_getTitle(), style: AppTextStyles.headline2, textAlign: TextAlign.center)
                 .animate()
                 .fadeIn(duration: 400.ms)
                 .scale(begin: const Offset(0.5, 0.5)),
+            
+            // Subtitle
+            const SizedBox(height: 4),
+            Text(
+              _getSubtitle(),
+              style: AppTextStyles.body2.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ).animate().fadeIn(delay: 200.ms),
 
             const SizedBox(height: 20),
 
@@ -85,6 +127,26 @@ class ResultDialog extends StatelessWidget {
                 .slideY(begin: 0.2),
 
             const SizedBox(height: 16),
+
+            // Special level bonus (if applicable)
+            if (result.isSpecialLevel) ...[
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withAlpha(40),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.accent.withAlpha(100)),
+                ),
+                child: Text(
+                  result.specialLevelBonus ?? '',
+                  style: AppTextStyles.caption.copyWith(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 2.seconds),
+              const SizedBox(height: 12),
+            ],
 
             // Rewards
             Container(
@@ -133,14 +195,20 @@ class ResultDialog extends StatelessWidget {
                     _ActionButton(
                       icon: Icons.home_rounded,
                       label: 'Home',
-                      onTap: onHome,
+                      onTap: () {
+                        _playButtonSound();
+                        onHome();
+                      },
                       color: AppColors.textSecondary,
                     ),
                     const SizedBox(width: 32),
                     _ActionButton(
                       icon: Icons.replay_rounded,
                       label: 'Retry',
-                      onTap: onReplay,
+                      onTap: () {
+                        _playButtonSound();
+                        onReplay();
+                      },
                       color: AppColors.secondary,
                     ),
                   ],
@@ -150,7 +218,10 @@ class ResultDialog extends StatelessWidget {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: onNextLevel,
+                    onPressed: () {
+                      _playButtonSound();
+                      onNextLevel();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.success,
                       foregroundColor: Colors.white,
@@ -161,9 +232,9 @@ class ResultDialog extends StatelessWidget {
                       elevation: 4,
                     ),
                     icon: const Icon(Icons.arrow_forward_rounded, size: 24),
-                    label: const Text(
-                      'Next Level',
-                      style: TextStyle(
+                    label: Text(
+                      'Level ${result.level + 1} →',
+                      style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),

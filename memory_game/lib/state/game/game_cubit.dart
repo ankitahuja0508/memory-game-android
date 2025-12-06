@@ -53,6 +53,8 @@ class GameCubit extends Cubit<GameState> {
 
   void _startPreviewPhase() {
     const tickDuration = Duration(milliseconds: 100);
+    int lastSecond = -1;
+    
     _previewTimer = Timer.periodic(tickDuration, (timer) {
       if (state.phase != GamePhase.preview) {
         timer.cancel();
@@ -65,6 +67,13 @@ class GameCubit extends Cubit<GameState> {
         timer.cancel();
         _endPreviewPhase();
       } else {
+        // Play countdown sound for last 3 seconds
+        final currentSecond = newRemaining.inSeconds;
+        if (currentSecond != lastSecond && currentSecond <= 3 && currentSecond > 0) {
+          _audioService.playCountdown();
+          _hapticService.light();
+          lastSecond = currentSecond;
+        }
         emit(state.copyWith(previewTimeRemaining: newRemaining));
       }
     });
@@ -103,6 +112,18 @@ class GameCubit extends Cubit<GameState> {
           timer.cancel();
           emit(state.copyWith(phase: GamePhase.timeout, elapsedTime: newElapsed));
           return;
+        }
+
+        // Play warning sound when time is low
+        if (state.timeLimit != null) {
+          final remaining = state.timeLimit! - newElapsed;
+          if (remaining.inSeconds == 10 || remaining.inSeconds == 5) {
+            _audioService.playTimerWarning();
+            _hapticService.light();
+          } else if (remaining.inSeconds <= 3 && remaining.inSeconds > 0) {
+            _audioService.playCountdown();
+            _hapticService.medium();
+          }
         }
 
         emit(state.copyWith(elapsedTime: newElapsed));
@@ -201,9 +222,9 @@ class GameCubit extends Cubit<GameState> {
 
   void _completeGame() {
     _stopAllTimers();
-    _audioService.playSuccess();
     _hapticService.heavy();
     emit(state.copyWith(phase: GamePhase.completed));
+    // Note: Success sound is played in game_screen.dart when showing the result dialog
   }
 
   // Power-ups

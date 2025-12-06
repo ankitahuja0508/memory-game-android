@@ -32,18 +32,17 @@ class _GameScreenState extends State<GameScreen> {
   late ConfettiController _confettiController;
   late AudioService _audioService;
   bool _showTutorial = false;
+  int _currentLevel = 1;
 
   @override
   void initState() {
     super.initState();
+    _currentLevel = widget.level;
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
     
-    // Use the singleton AudioService instance
     _audioService = AudioService.instance;
 
     final playerState = context.read<PlayerCubit>().state;
-    
-    // Sync audio settings with player preferences
     _audioService.updateSettings(playerState.settings);
 
     _gameCubit = GameCubit(
@@ -54,14 +53,12 @@ class _GameScreenState extends State<GameScreen> {
 
     final showPreview = playerState.settings.showPreview;
     
-    // Check if tutorial should be shown (only on level 1, first time)
     if (widget.level == 1 && !playerState.settings.tutorialCompleted) {
       _showTutorial = true;
     }
     
-    _gameCubit.startLevel(widget.level, themeId: playerState.player.equippedTheme, showPreview: showPreview);
+    _gameCubit.startLevel(_currentLevel, themeId: playerState.player.equippedTheme, showPreview: showPreview);
     
-    // Pause game if tutorial is showing
     if (_showTutorial) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _gameCubit.pauseGame();
@@ -92,16 +89,13 @@ class _GameScreenState extends State<GameScreen> {
     final config = PowerUpConfigs.getConfig(type);
 
     if (count <= 0) {
-      // Pause the game and navigate to shop
       _gameCubit.pauseGame();
       _showPurchasePowerUpDialog(config);
       return;
     }
 
-    // Use the power-up
     playerCubit.usePowerUp(powerUpId);
 
-    // Show activation feedback
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -117,7 +111,6 @@ class _GameScreenState extends State<GameScreen> {
       ),
     );
 
-    // Activate the effect
     switch (type) {
       case PowerUpType.peek:
         _gameCubit.activatePeek();
@@ -147,10 +140,7 @@ class _GameScreenState extends State<GameScreen> {
             Text(config.icon, style: const TextStyle(fontSize: 28)),
             const SizedBox(width: 12),
             Expanded(
-              child: Text(
-                'No ${config.name}!',
-                style: const TextStyle(fontSize: 18),
-              ),
+              child: Text('No ${config.name}!', style: const TextStyle(fontSize: 18)),
             ),
           ],
         ),
@@ -158,10 +148,7 @@ class _GameScreenState extends State<GameScreen> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              config.description,
-              style: const TextStyle(color: AppColors.textSecondary),
-            ),
+            Text(config.description, style: const TextStyle(color: AppColors.textSecondary)),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
@@ -178,13 +165,8 @@ class _GameScreenState extends State<GameScreen> {
                         children: [
                           const Text('💰', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 4),
-                          Text(
-                            '${config.coinCost}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.coinColor,
-                            ),
-                          ),
+                          Text('${config.coinCost}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.coinColor)),
                         ],
                       ),
                       const Text('Coins', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
@@ -197,13 +179,8 @@ class _GameScreenState extends State<GameScreen> {
                         children: [
                           const Text('💎', style: TextStyle(fontSize: 16)),
                           const SizedBox(width: 4),
-                          Text(
-                            '${config.gemCost}',
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              color: AppColors.gemColor,
-                            ),
-                          ),
+                          Text('${config.gemCost}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.gemColor)),
                         ],
                       ),
                       const Text('Gems', style: TextStyle(fontSize: 10, color: AppColors.textSecondary)),
@@ -231,18 +208,49 @@ class _GameScreenState extends State<GameScreen> {
             },
             icon: const Icon(Icons.shopping_bag, size: 18),
             label: const Text('Go to Shop'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
           ),
         ],
       ),
     );
   }
 
+  void _startNextLevel() {
+    // Stop confetti
+    _confettiController.stop();
+    
+    // Increment level
+    setState(() {
+      _currentLevel++;
+    });
+    
+    // Play button sound
+    _audioService.playButton();
+    
+    // Start the new level
+    final playerState = context.read<PlayerCubit>().state;
+    _gameCubit.startLevel(_currentLevel, 
+      themeId: playerState.player.equippedTheme, 
+      showPreview: playerState.settings.showPreview);
+  }
+
+  void _restartLevel() {
+    // Stop confetti
+    _confettiController.stop();
+    
+    // Play button sound
+    _audioService.playButton();
+    
+    // Restart
+    _gameCubit.restartLevel();
+  }
+
   void _showResultDialog() {
     final result = _gameCubit.getResult();
     context.read<PlayerCubit>().updateLevelProgress(result);
+    
+    // Play success sound and show confetti
+    _audioService.playSuccess();
     _confettiController.play();
 
     showDialog(
@@ -252,14 +260,15 @@ class _GameScreenState extends State<GameScreen> {
         result: result,
         onNextLevel: () {
           Navigator.pop(context);
-          _gameCubit.startLevel(widget.level + 1);
+          _startNextLevel();
         },
         onReplay: () {
           Navigator.pop(context);
-          _gameCubit.restartLevel();
+          _restartLevel();
         },
         onHome: () {
           Navigator.pop(context);
+          _confettiController.stop();
           Navigator.pop(context);
         },
       ),
@@ -267,6 +276,8 @@ class _GameScreenState extends State<GameScreen> {
   }
 
   void _showTimeoutDialog() {
+    _audioService.playMismatch();
+    
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -286,7 +297,7 @@ class _GameScreenState extends State<GameScreen> {
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _gameCubit.restartLevel();
+              _restartLevel();
             },
             child: const Text('Retry'),
           ),
@@ -318,16 +329,17 @@ class _GameScreenState extends State<GameScreen> {
                     builder: (context, constraints) {
                       return Column(
                         children: [
-                          // Game Header - fixed height
+                          // Game Header
                           _GameHeader(
+                            level: _currentLevel,
                             onPause: () => _gameCubit.pauseGame(),
                             onHome: () => Navigator.pop(context),
                           ),
 
-                          // Game Stats - fixed height
+                          // Game Stats
                           const _GameStats(),
 
-                          // Game Board - takes remaining space
+                          // Game Board
                           Expanded(
                             child: BlocBuilder<GameCubit, GameState>(
                               builder: (context, state) {
@@ -338,7 +350,6 @@ class _GameScreenState extends State<GameScreen> {
                                 return Stack(
                                   fit: StackFit.expand,
                                   children: [
-                                    // Game Board
                                     Center(
                                       child: GameBoard(
                                         cards: state.cards,
@@ -349,7 +360,6 @@ class _GameScreenState extends State<GameScreen> {
                                       ),
                                     ),
 
-                                    // Preview Overlay
                                     if (state.phase == GamePhase.preview)
                                       _PreviewOverlay(
                                         remainingTime: state.previewTimeRemaining,
@@ -361,7 +371,7 @@ class _GameScreenState extends State<GameScreen> {
                             ),
                           ),
 
-                          // Power-up Bar - fixed at bottom
+                          // Power-up Bar
                           Container(
                             padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                             child: BlocBuilder<PlayerCubit, PlayerState>(
@@ -385,7 +395,7 @@ class _GameScreenState extends State<GameScreen> {
                     },
                   ),
 
-                  // Confetti overlay
+                  // Confetti
                   Align(
                     alignment: Alignment.topCenter,
                     child: ConfettiWidget(
@@ -404,7 +414,7 @@ class _GameScreenState extends State<GameScreen> {
                     ),
                   ),
 
-                  // Tutorial overlay
+                  // Tutorial
                   if (_showTutorial)
                     Positioned.fill(
                       child: TutorialOverlay(onComplete: _onTutorialComplete),
@@ -420,10 +430,11 @@ class _GameScreenState extends State<GameScreen> {
 }
 
 class _GameHeader extends StatelessWidget {
+  final int level;
   final VoidCallback onPause;
   final VoidCallback onHome;
 
-  const _GameHeader({required this.onPause, required this.onHome});
+  const _GameHeader({required this.level, required this.onPause, required this.onHome});
 
   @override
   Widget build(BuildContext context) {
@@ -441,7 +452,7 @@ class _GameHeader extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Level ${state.level}', style: AppTextStyles.headline3),
+                  Text('Level $level', style: AppTextStyles.headline3),
                   if (state.isFreezeActive)
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
@@ -454,10 +465,8 @@ class _GameHeader extends StatelessWidget {
                         children: [
                           const Text('❄️', style: TextStyle(fontSize: 12)),
                           const SizedBox(width: 4),
-                          Text(
-                            'FROZEN',
-                            style: AppTextStyles.caption.copyWith(color: AppColors.secondary),
-                          ),
+                          Text('FROZEN',
+                            style: AppTextStyles.caption.copyWith(color: AppColors.secondary)),
                         ],
                       ),
                     ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 1.seconds),
@@ -509,21 +518,17 @@ class _GameStats extends StatelessWidget {
               ),
               _StatItem(
                 icon: Icons.check_circle,
-                value: Text(
-                  '${state.matches}/${state.totalPairs}',
-                  style: AppTextStyles.body2.copyWith(fontWeight: FontWeight.bold),
-                ),
+                value: Text('${state.matches}/${state.totalPairs}',
+                  style: AppTextStyles.body2.copyWith(fontWeight: FontWeight.bold)),
                 label: 'Matched',
               ),
               _StatItem(
                 icon: Icons.local_fire_department,
-                value: Text(
-                  '${state.currentStreak}',
+                value: Text('${state.currentStreak}',
                   style: AppTextStyles.body2.copyWith(
                     fontWeight: FontWeight.bold,
                     color: state.currentStreak >= 3 ? AppColors.accent : null,
-                  ),
-                ),
+                  )),
                 label: 'Streak',
               ),
             ],
@@ -580,33 +585,17 @@ class _PreviewOverlay extends StatelessWidget {
               AppStrings.memorize,
               style: AppTextStyles.headline1.copyWith(
                 color: AppColors.accent,
-                shadows: [
-                  Shadow(
-                    color: AppColors.accent.withAlpha(128),
-                    blurRadius: 20,
-                  ),
-                ],
+                shadows: [Shadow(color: AppColors.accent.withAlpha(128), blurRadius: 20)],
               ),
-            )
-                .animate(onPlay: (c) => c.repeat())
-                .shimmer(duration: 1.seconds),
+            ).animate(onPlay: (c) => c.repeat()).shimmer(duration: 1.seconds),
             const SizedBox(height: 16),
-            Text(
-              '$seconds',
-              style: AppTextStyles.headline1.copyWith(
-                fontSize: 72,
-                color: Colors.white,
-              ),
-            )
-                .animate()
-                .scale(duration: 200.ms),
+            Text('$seconds',
+              style: AppTextStyles.headline1.copyWith(fontSize: 72, color: Colors.white),
+            ).animate().scale(duration: 200.ms),
             const SizedBox(height: 24),
             TextButton(
               onPressed: onSkip,
-              child: Text(
-                'Skip',
-                style: AppTextStyles.body2.copyWith(color: Colors.white70),
-              ),
+              child: Text('Skip', style: AppTextStyles.body2.copyWith(color: Colors.white70)),
             ),
           ],
         ),

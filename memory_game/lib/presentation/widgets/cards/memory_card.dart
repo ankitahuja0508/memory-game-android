@@ -146,6 +146,12 @@ class MemoryCard extends StatelessWidget {
           .scale(begin: const Offset(1, 1), end: const Offset(1.05, 1.05), duration: 200.ms)
           .then()
           .scale(begin: const Offset(1.05, 1.05), end: const Offset(1, 1), duration: 200.ms);
+    } else if (card.isHinted) {
+      // Pulsing animation for hinted cards
+      content = content
+          .animate(onPlay: (c) => c.repeat(reverse: true))
+          .scale(begin: const Offset(1, 1), end: const Offset(1.08, 1.08), duration: 500.ms)
+          .shimmer(duration: 800.ms);
     }
 
     return content;
