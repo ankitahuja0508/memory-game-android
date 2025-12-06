@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/constants/app_colors.dart';
-import '../../../core/theme/app_theme.dart';
 
 class GameButton extends StatelessWidget {
   final String text;
@@ -28,63 +26,55 @@ class GameButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = gradient ?? AppColors.primaryGradient;
+    final hPad = isSmall ? 6.0 : 12.0;
+    final vPad = isSmall ? 6.0 : 10.0;
+    final fontSize = isSmall ? 11.0 : 14.0;
+    final iconSize = isSmall ? 14.0 : 16.0;
 
     return GestureDetector(
       onTap: isDisabled ? null : onPressed,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(
-          horizontal: isSmall ? 8 : 16,
-          vertical: isSmall ? 8 : 12,
-        ),
+      child: Container(
+        padding: EdgeInsets.symmetric(horizontal: hPad, vertical: vPad),
         decoration: BoxDecoration(
           gradient: isOutlined ? null : LinearGradient(colors: colors),
-          borderRadius: BorderRadius.circular(isSmall ? 12 : 16),
-          border: isOutlined ? Border.all(color: colors.first, width: 2) : null,
+          borderRadius: BorderRadius.circular(isSmall ? 10 : 14),
+          border: isOutlined ? Border.all(color: colors.first, width: 1.5) : null,
           boxShadow: isOutlined
               ? null
               : [
                   BoxShadow(
-                    color: colors.first.withAlpha(77),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    color: colors.first.withAlpha(60),
+                    blurRadius: 6,
+                    offset: const Offset(0, 3),
                   ),
                 ],
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            if (emoji != null) ...[
-              Text(emoji!, style: TextStyle(fontSize: isSmall ? 14 : 18)),
-              SizedBox(width: isSmall ? 4 : 6),
-            ],
-            if (icon != null) ...[
-              Icon(icon, size: isSmall ? 16 : 20, color: Colors.white),
-              SizedBox(width: isSmall ? 4 : 6),
-            ],
-            Flexible(
-              child: Text(
+        child: FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (emoji != null) ...[
+                Text(emoji!, style: TextStyle(fontSize: iconSize)),
+                SizedBox(width: isSmall ? 3 : 4),
+              ],
+              if (icon != null) ...[
+                Icon(icon, size: iconSize, color: Colors.white),
+                SizedBox(width: isSmall ? 3 : 4),
+              ],
+              Text(
                 text,
-                overflow: TextOverflow.ellipsis,
-                maxLines: 1,
-                style: isSmall
-                    ? AppTextStyles.caption.copyWith(
-                        color: isOutlined ? colors.first : Colors.white,
-                        fontWeight: FontWeight.bold,
-                      )
-                    : AppTextStyles.body2.copyWith(
-                        color: isOutlined ? colors.first : Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                style: TextStyle(
+                  fontSize: fontSize,
+                  color: isOutlined ? colors.first : Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
-    ).animate().scale(
-      duration: 100.ms,
-      curve: Curves.easeOut,
     );
   }
 }
@@ -100,7 +90,7 @@ class IconGameButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.color,
-    this.size = 44,
+    this.size = 40,
   });
 
   @override
@@ -111,12 +101,12 @@ class IconGameButton extends StatelessWidget {
         width: size,
         height: size,
         decoration: BoxDecoration(
-          color: (color ?? AppColors.surface).withAlpha(204),
+          color: (color ?? AppColors.surface).withAlpha(200),
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withAlpha(51),
-              blurRadius: 8,
+              color: Colors.black.withAlpha(40),
+              blurRadius: 6,
               offset: const Offset(0, 2),
             ),
           ],
