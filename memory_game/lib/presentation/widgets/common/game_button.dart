@@ -34,7 +34,7 @@ class GameButton extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
         padding: EdgeInsets.symmetric(
-          horizontal: isSmall ? 16 : 24,
+          horizontal: isSmall ? 8 : 16,
           vertical: isSmall ? 8 : 12,
         ),
         decoration: BoxDecoration(
@@ -56,23 +56,28 @@ class GameButton extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (emoji != null) ...[
-              Text(emoji!, style: TextStyle(fontSize: isSmall ? 16 : 20)),
-              const SizedBox(width: 8),
+              Text(emoji!, style: TextStyle(fontSize: isSmall ? 14 : 18)),
+              SizedBox(width: isSmall ? 4 : 6),
             ],
             if (icon != null) ...[
-              Icon(icon, size: isSmall ? 18 : 22, color: Colors.white),
-              const SizedBox(width: 8),
+              Icon(icon, size: isSmall ? 16 : 20, color: Colors.white),
+              SizedBox(width: isSmall ? 4 : 6),
             ],
-            Text(
-              text,
-              style: isSmall
-                  ? AppTextStyles.body2.copyWith(
-                      color: isOutlined ? colors.first : Colors.white,
-                      fontWeight: FontWeight.bold,
-                    )
-                  : AppTextStyles.button.copyWith(
-                      color: isOutlined ? colors.first : Colors.white,
-                    ),
+            Flexible(
+              child: Text(
+                text,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                style: isSmall
+                    ? AppTextStyles.caption.copyWith(
+                        color: isOutlined ? colors.first : Colors.white,
+                        fontWeight: FontWeight.bold,
+                      )
+                    : AppTextStyles.body2.copyWith(
+                        color: isOutlined ? colors.first : Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+              ),
             ),
           ],
         ),
@@ -95,7 +100,7 @@ class IconGameButton extends StatelessWidget {
     required this.icon,
     required this.onPressed,
     this.color,
-    this.size = 48,
+    this.size = 44,
   });
 
   @override
