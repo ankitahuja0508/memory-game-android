@@ -123,28 +123,52 @@ class ResultDialog extends StatelessWidget {
 
             const SizedBox(height: 20),
 
-            // Action Buttons - Icon buttons with labels below
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            // Action Buttons - Home & Retry in row, Next Level below
+            Column(
               children: [
-                _ActionButton(
-                  icon: Icons.home_rounded,
-                  label: 'Home',
-                  onTap: onHome,
-                  color: AppColors.textSecondary,
+                // Home and Retry buttons in a row
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    _ActionButton(
+                      icon: Icons.home_rounded,
+                      label: 'Home',
+                      onTap: onHome,
+                      color: AppColors.textSecondary,
+                    ),
+                    const SizedBox(width: 32),
+                    _ActionButton(
+                      icon: Icons.replay_rounded,
+                      label: 'Retry',
+                      onTap: onReplay,
+                      color: AppColors.secondary,
+                    ),
+                  ],
                 ),
-                _ActionButton(
-                  icon: Icons.replay_rounded,
-                  label: 'Retry',
-                  onTap: onReplay,
-                  color: AppColors.secondary,
-                ),
-                _ActionButton(
-                  icon: Icons.arrow_forward_rounded,
-                  label: 'Next',
-                  onTap: onNextLevel,
-                  color: AppColors.success,
-                  isPrimary: true,
+                const SizedBox(height: 16),
+                // Next Level - Full width primary button
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: onNextLevel,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 4,
+                    ),
+                    icon: const Icon(Icons.arrow_forward_rounded, size: 24),
+                    label: const Text(
+                      'Next Level',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             )
@@ -163,14 +187,12 @@ class _ActionButton extends StatelessWidget {
   final String label;
   final VoidCallback onTap;
   final Color color;
-  final bool isPrimary;
 
   const _ActionButton({
     required this.icon,
     required this.label,
     required this.onTap,
     required this.color,
-    this.isPrimary = false,
   });
 
   @override
@@ -184,28 +206,14 @@ class _ActionButton extends StatelessWidget {
             width: 56,
             height: 56,
             decoration: BoxDecoration(
-              gradient: isPrimary
-                  ? const LinearGradient(colors: AppColors.successGradient)
-                  : null,
-              color: isPrimary ? null : AppColors.surface,
+              color: AppColors.surface,
               borderRadius: BorderRadius.circular(16),
-              border: isPrimary
-                  ? null
-                  : Border.all(color: color.withAlpha(100), width: 1.5),
-              boxShadow: isPrimary
-                  ? [
-                      BoxShadow(
-                        color: AppColors.success.withAlpha(80),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ]
-                  : null,
+              border: Border.all(color: color.withAlpha(100), width: 1.5),
             ),
             child: Icon(
               icon,
               size: 28,
-              color: isPrimary ? Colors.white : color,
+              color: color,
             ),
           ),
           const SizedBox(height: 8),
@@ -214,7 +222,7 @@ class _ActionButton extends StatelessWidget {
             style: TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w600,
-              color: isPrimary ? AppColors.success : color,
+              color: color,
             ),
           ),
         ],
