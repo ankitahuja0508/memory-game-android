@@ -49,29 +49,35 @@ class GameButton extends StatelessWidget {
                   ),
                 ],
         ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (emoji != null) ...[
-                Text(emoji!, style: TextStyle(fontSize: iconSize)),
-                SizedBox(width: isSmall ? 3 : 4),
-              ],
-              if (icon != null) ...[
-                Icon(icon, size: iconSize, color: Colors.white),
-                SizedBox(width: isSmall ? 3 : 4),
-              ],
-              Text(
-                text,
-                style: TextStyle(
-                  fontSize: fontSize,
-                  color: isOutlined ? colors.first : Colors.white,
-                  fontWeight: FontWeight.bold,
+        child: Center(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                if (emoji != null) ...[
+                  Text(emoji!, style: TextStyle(fontSize: iconSize)),
+                  SizedBox(width: isSmall ? 3 : 4),
+                ],
+                if (icon != null) ...[
+                  Icon(icon, size: iconSize, color: Colors.white),
+                  SizedBox(width: isSmall ? 3 : 4),
+                ],
+                Flexible(
+                  child: Text(
+                    text,
+                    style: TextStyle(
+                      fontSize: fontSize,
+                      color: isOutlined ? colors.first : Colors.white,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
