@@ -23,61 +23,66 @@ class GameBoard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Calculate card size based on available space
-        final availableWidth = constraints.maxWidth;
-        final availableHeight = constraints.maxHeight;
+        // Available space
+        final availableWidth = constraints.maxWidth - 24; // 12px padding each side
+        final availableHeight = constraints.maxHeight - 24;
 
-        // Calculate spacing
-        const spacing = 8.0;
-        const padding = 8.0;
+        // Calculate card size that fits
+        const spacing = 6.0;
+        
+        // Max size based on width
+        final maxCardWidth = (availableWidth - (spacing * (columns - 1))) / columns;
+        // Max size based on height
+        final maxCardHeight = (availableHeight - (spacing * (rows - 1))) / rows;
+        
+        // Use the smaller to ensure it fits, cap at 90px
+        final cardSize = [maxCardWidth, maxCardHeight, 90.0].reduce((a, b) => a < b ? a : b);
 
-        // Calculate maximum card size that fits
-        final maxCardWidth = (availableWidth - (padding * 2) - (spacing * (columns - 1))) / columns;
-        final maxCardHeight = (availableHeight - (padding * 2) - (spacing * (rows - 1))) / rows;
+        // Build grid
+        return Padding(
+          padding: const EdgeInsets.all(12),
+          child: AnimationLimiter(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(rows, (rowIndex) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: rowIndex < rows - 1 ? spacing : 0),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(columns, (colIndex) {
+                      final index = rowIndex * columns + colIndex;
+                      if (index >= cards.length) {
+                        return SizedBox(width: cardSize, height: cardSize);
+                      }
 
-        // Use the smaller dimension to ensure cards fit, with a reasonable max
-        final cardSize = [maxCardWidth, maxCardHeight, 100.0].reduce((a, b) => a < b ? a : b);
-
-        // Calculate total grid dimensions
-        final gridWidth = (cardSize * columns) + (spacing * (columns - 1)) + (padding * 2);
-        final gridHeight = (cardSize * rows) + (spacing * (rows - 1)) + (padding * 2);
-
-        return Center(
-          child: SizedBox(
-            width: gridWidth,
-            height: gridHeight,
-            child: Padding(
-              padding: const EdgeInsets.all(padding),
-              child: AnimationLimiter(
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: columns,
-                    mainAxisSpacing: spacing,
-                    crossAxisSpacing: spacing,
-                    childAspectRatio: 1,
-                  ),
-                  itemCount: cards.length,
-                  itemBuilder: (context, index) {
-                    return AnimationConfiguration.staggeredGrid(
-                      position: index,
-                      duration: const Duration(milliseconds: 375),
-                      columnCount: columns,
-                      child: ScaleAnimation(
-                        child: FadeInAnimation(
-                          child: MemoryCard(
-                            card: cards[index],
-                            size: cardSize,
-                            onTap: () => onCardTap(index),
-                            interactive: interactive,
+                      return AnimationConfiguration.staggeredGrid(
+                        position: index,
+                        duration: const Duration(milliseconds: 300),
+                        columnCount: columns,
+                        child: ScaleAnimation(
+                          child: FadeInAnimation(
+                            child: Padding(
+                              padding: EdgeInsets.only(right: colIndex < columns - 1 ? spacing : 0),
+                              child: SizedBox(
+                                width: cardSize,
+                                height: cardSize,
+                                child: MemoryCard(
+                                  card: cards[index],
+                                  size: cardSize,
+                                  onTap: () => onCardTap(index),
+                                  interactive: interactive,
+                                ),
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    );
-                  },
-                ),
-              ),
+                      );
+                    }),
+                  ),
+                );
+              }),
             ),
           ),
         );

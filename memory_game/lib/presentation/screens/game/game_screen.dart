@@ -166,80 +166,79 @@ class _GameScreenState extends State<GameScreen> {
             body: SafeArea(
               child: Stack(
                 children: [
-                  Column(
-                    children: [
-                      // Game Header
-                      _GameHeader(
-                        onPause: () => _gameCubit.pauseGame(),
-                        onHome: () => Navigator.pop(context),
-                      ),
+                  // Main layout
+                  LayoutBuilder(
+                    builder: (context, constraints) {
+                      return Column(
+                        children: [
+                          // Game Header - fixed height
+                          _GameHeader(
+                            onPause: () => _gameCubit.pauseGame(),
+                            onHome: () => Navigator.pop(context),
+                          ),
 
-                      // Game Stats
-                      _GameStats(),
+                          // Game Stats - fixed height
+                          const _GameStats(),
 
-                      // Preview Overlay or Game Board
-                      Expanded(
-                        child: BlocBuilder<GameCubit, GameState>(
-                          builder: (context, state) {
-                            if (state.phase == GamePhase.loading) {
-                              return const Center(child: CircularProgressIndicator());
-                            }
+                          // Game Board - takes remaining space
+                          Expanded(
+                            child: BlocBuilder<GameCubit, GameState>(
+                              builder: (context, state) {
+                                if (state.phase == GamePhase.loading) {
+                                  return const Center(child: CircularProgressIndicator());
+                                }
 
-                            return Stack(
-                              children: [
-                                // Game Board - responsive layout
-                                Positioned.fill(
-                                  child: Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                                    child: GameBoard(
-                                      cards: state.cards,
-                                      columns: state.levelConfig?.columns ?? 4,
-                                      rows: state.levelConfig?.rows ?? 4,
-                                      onCardTap: (index) => _gameCubit.flipCard(index),
-                                      interactive: state.phase == GamePhase.playing,
+                                return Stack(
+                                  fit: StackFit.expand,
+                                  children: [
+                                    // Game Board
+                                    Center(
+                                      child: GameBoard(
+                                        cards: state.cards,
+                                        columns: state.levelConfig?.columns ?? 4,
+                                        rows: state.levelConfig?.rows ?? 4,
+                                        onCardTap: (index) => _gameCubit.flipCard(index),
+                                        interactive: state.phase == GamePhase.playing,
+                                      ),
                                     ),
-                                  ),
-                                ),
 
-                                // Preview Overlay
-                                if (state.phase == GamePhase.preview)
-                                  Positioned.fill(
-                                    child: _PreviewOverlay(
-                                      remainingTime: state.previewTimeRemaining,
-                                      onSkip: () => _gameCubit.skipPreview(),
-                                    ),
-                                  ),
-                              ],
-                            );
-                          },
-                        ),
-                      ),
-
-                      // Power-up Bar
-                      Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 12),
-                        child: BlocBuilder<PlayerCubit, PlayerState>(
-                          builder: (context, playerState) {
-                            return BlocBuilder<GameCubit, GameState>(
-                              builder: (context, gameState) {
-                                return PowerUpBar(
-                                  powerUpCounts: playerState.player.powerUpInventory,
-                                  isPeekActive: gameState.isPeekActive,
-                                  isFreezeActive: gameState.isFreezeActive,
-                                  freezeRemaining: gameState.freezeTimeRemaining,
-                                  onPowerUpTap: _handlePowerUp,
+                                    // Preview Overlay
+                                    if (state.phase == GamePhase.preview)
+                                      _PreviewOverlay(
+                                        remainingTime: state.previewTimeRemaining,
+                                        onSkip: () => _gameCubit.skipPreview(),
+                                      ),
+                                  ],
                                 );
                               },
-                            );
-                          },
-                        ),
-                      ),
+                            ),
+                          ),
 
-                      const SizedBox(height: 8),
-                    ],
+                          // Power-up Bar - fixed at bottom
+                          Container(
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                            child: BlocBuilder<PlayerCubit, PlayerState>(
+                              builder: (context, playerState) {
+                                return BlocBuilder<GameCubit, GameState>(
+                                  builder: (context, gameState) {
+                                    return PowerUpBar(
+                                      powerUpCounts: playerState.player.powerUpInventory,
+                                      isPeekActive: gameState.isPeekActive,
+                                      isFreezeActive: gameState.isFreezeActive,
+                                      freezeRemaining: gameState.freezeTimeRemaining,
+                                      onPowerUpTap: _handlePowerUp,
+                                    );
+                                  },
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
 
-                  // Confetti
+                  // Confetti overlay
                   Align(
                     alignment: Alignment.topCenter,
                     child: ConfettiWidget(
@@ -278,7 +277,7 @@ class _GameHeader extends StatelessWidget {
     return BlocBuilder<GameCubit, GameState>(
       builder: (context, state) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
@@ -287,6 +286,7 @@ class _GameHeader extends StatelessWidget {
                 onPressed: onHome,
               ),
               Column(
+                mainAxisSize: MainAxisSize.min,
                 children: [
                   Text('Level ${state.level}', style: AppTextStyles.headline3),
                   if (state.isFreezeActive)
@@ -328,16 +328,18 @@ class _GameHeader extends StatelessWidget {
 }
 
 class _GameStats extends StatelessWidget {
+  const _GameStats();
+
   @override
   Widget build(BuildContext context) {
     return BlocBuilder<GameCubit, GameState>(
       builder: (context, state) {
         return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+          margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           decoration: BoxDecoration(
             color: AppColors.surface.withAlpha(179),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -347,27 +349,24 @@ class _GameStats extends StatelessWidget {
                 value: GameTimer(duration: state.remainingTime, maxDuration: state.timeLimit),
                 label: 'Time',
               ),
-              Container(width: 1, height: 30, color: Colors.white24),
               _StatItem(
                 icon: Icons.touch_app,
-                value: Text('${state.moves}', style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold)),
+                value: Text('${state.moves}', style: AppTextStyles.body2.copyWith(fontWeight: FontWeight.bold)),
                 label: 'Moves',
               ),
-              Container(width: 1, height: 30, color: Colors.white24),
               _StatItem(
                 icon: Icons.check_circle,
                 value: Text(
                   '${state.matches}/${state.totalPairs}',
-                  style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
+                  style: AppTextStyles.body2.copyWith(fontWeight: FontWeight.bold),
                 ),
                 label: 'Matched',
               ),
-              Container(width: 1, height: 30, color: Colors.white24),
               _StatItem(
                 icon: Icons.local_fire_department,
                 value: Text(
                   '${state.currentStreak}',
-                  style: AppTextStyles.body1.copyWith(
+                  style: AppTextStyles.body2.copyWith(
                     fontWeight: FontWeight.bold,
                     color: state.currentStreak >= 3 ? AppColors.accent : null,
                   ),
@@ -397,12 +396,12 @@ class _StatItem extends StatelessWidget {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: AppColors.textSecondary),
-            const SizedBox(width: 4),
+            Icon(icon, size: 12, color: AppColors.textSecondary),
+            const SizedBox(width: 2),
             value,
           ],
         ),
-        Text(label, style: AppTextStyles.caption),
+        Text(label, style: AppTextStyles.caption.copyWith(fontSize: 10)),
       ],
     );
   }
@@ -419,43 +418,45 @@ class _PreviewOverlay extends StatelessWidget {
     final seconds = (remainingTime.inMilliseconds / 1000).ceil();
 
     return Container(
-      color: Colors.black.withAlpha(77),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            AppStrings.memorize,
-            style: AppTextStyles.headline1.copyWith(
-              color: AppColors.accent,
-              shadows: [
-                Shadow(
-                  color: AppColors.accent.withAlpha(128),
-                  blurRadius: 20,
-                ),
-              ],
+      color: Colors.black.withAlpha(128),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              AppStrings.memorize,
+              style: AppTextStyles.headline1.copyWith(
+                color: AppColors.accent,
+                shadows: [
+                  Shadow(
+                    color: AppColors.accent.withAlpha(128),
+                    blurRadius: 20,
+                  ),
+                ],
+              ),
+            )
+                .animate(onPlay: (c) => c.repeat())
+                .shimmer(duration: 1.seconds),
+            const SizedBox(height: 16),
+            Text(
+              '$seconds',
+              style: AppTextStyles.headline1.copyWith(
+                fontSize: 72,
+                color: Colors.white,
+              ),
+            )
+                .animate()
+                .scale(duration: 200.ms),
+            const SizedBox(height: 24),
+            TextButton(
+              onPressed: onSkip,
+              child: Text(
+                'Skip',
+                style: AppTextStyles.body2.copyWith(color: Colors.white70),
+              ),
             ),
-          )
-              .animate(onPlay: (c) => c.repeat())
-              .shimmer(duration: 1.seconds),
-          const SizedBox(height: 16),
-          Text(
-            '$seconds',
-            style: AppTextStyles.headline1.copyWith(
-              fontSize: 72,
-              color: Colors.white,
-            ),
-          )
-              .animate()
-              .scale(duration: 200.ms),
-          const SizedBox(height: 24),
-          TextButton(
-            onPressed: onSkip,
-            child: Text(
-              'Skip',
-              style: AppTextStyles.body2.copyWith(color: Colors.white70),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
