@@ -6,14 +6,14 @@ class LevelGeneratorService {
   final Random _random = Random();
 
   static const List<GameCardTheme> themes = [
-    GameCardTheme(id: 'animals', name: 'Animals', icon: '🐼', symbols: CardSymbols.animals),
-    GameCardTheme(id: 'space', name: 'Space', icon: '🚀', symbols: CardSymbols.space, unlocksAtLevel: 8, cost: 100),
-    GameCardTheme(id: 'food', name: 'Food', icon: '🍕', symbols: CardSymbols.food, unlocksAtLevel: 15, cost: 150),
-    GameCardTheme(id: 'nature', name: 'Nature', icon: '🌸', symbols: CardSymbols.nature, unlocksAtLevel: 25, cost: 200),
-    GameCardTheme(id: 'sports', name: 'Sports', icon: '⚽', symbols: CardSymbols.sports, unlocksAtLevel: 35, cost: 300),
-    GameCardTheme(id: 'travel', name: 'Travel', icon: '✈️', symbols: CardSymbols.travel, unlocksAtLevel: 45, cost: 400),
-    GameCardTheme(id: 'emotions', name: 'Emotions', icon: '😀', symbols: CardSymbols.emotions, unlocksAtLevel: 55, cost: 500),
-    GameCardTheme(id: 'music', name: 'Music', icon: '🎵', symbols: CardSymbols.music, unlocksAtLevel: 70, cost: 600),
+    GameCardTheme(id: 'animals', name: 'Animals', icon: '🐼', symbols: CardSymbols.animals), // Free starter theme
+    GameCardTheme(id: 'space', name: 'Space', icon: '🚀', symbols: CardSymbols.space, unlocksAtLevel: 8, cost: 300),
+    GameCardTheme(id: 'food', name: 'Food', icon: '🍕', symbols: CardSymbols.food, unlocksAtLevel: 15, cost: 450),
+    GameCardTheme(id: 'nature', name: 'Nature', icon: '🌸', symbols: CardSymbols.nature, unlocksAtLevel: 25, cost: 600),
+    GameCardTheme(id: 'sports', name: 'Sports', icon: '⚽', symbols: CardSymbols.sports, unlocksAtLevel: 35, cost: 800),
+    GameCardTheme(id: 'travel', name: 'Travel', icon: '✈️', symbols: CardSymbols.travel, unlocksAtLevel: 45, cost: 1000),
+    GameCardTheme(id: 'emotions', name: 'Emotions', icon: '😀', symbols: CardSymbols.emotions, unlocksAtLevel: 55, cost: 1200),
+    GameCardTheme(id: 'music', name: 'Music', icon: '🎵', symbols: CardSymbols.music, unlocksAtLevel: 70, cost: 1500),
   ];
 
   static GameCardTheme getThemeById(String id) {

@@ -15,6 +15,32 @@ import 'presentation/screens/achievements/achievements_screen.dart';
 import 'presentation/screens/daily_rewards/daily_rewards_screen.dart';
 import 'presentation/screens/welcome/welcome_screen.dart';
 
+/// Route observer to ensure music plays across screen navigation
+class MusicRouteObserver extends RouteObserver<PageRoute<dynamic>> {
+  final AudioService audioService;
+  
+  MusicRouteObserver(this.audioService);
+  
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPush(route, previousRoute);
+    _ensureMusic();
+  }
+  
+  @override
+  void didPop(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    super.didPop(route, previousRoute);
+    _ensureMusic();
+  }
+  
+  void _ensureMusic() {
+    // Small delay to let the navigation settle, then check music
+    Future.delayed(const Duration(milliseconds: 500), () {
+      audioService.ensureMusicPlaying();
+    });
+  }
+}
+
 class MemoryGameApp extends StatefulWidget {
   const MemoryGameApp({super.key});
 
@@ -27,6 +53,7 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
   late AchievementService _achievementService;
   late DailyRewardService _dailyRewardService;
   late AudioService _audioService;
+  late MusicRouteObserver _musicRouteObserver;
   bool _isInitialized = false;
 
   @override
@@ -62,6 +89,9 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
     // Initialize audio service (singleton) - this prepares it for playback
     _audioService = AudioService.instance;
     await _audioService.initialize();
+    
+    // Create route observer for music management
+    _musicRouteObserver = MusicRouteObserver(_audioService);
     
     setState(() => _isInitialized = true);
   }
@@ -102,10 +132,11 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
           }
         },
         child: MaterialApp(
-          title: 'Memory Match',
+          title: 'Memory Match - Brain Training',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.darkTheme,
           initialRoute: '/',
+          navigatorObservers: [_musicRouteObserver],
           onGenerateRoute: (settings) {
             switch (settings.name) {
               case '/':

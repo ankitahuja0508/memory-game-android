@@ -26,29 +26,33 @@ class AppConstants {
   static const int cardShowDuration = 1000;
   static const int introAnimationDelay = 500;
 
-  // Rewards
-  static const int baseCoinsPerLevel = 10;
-  static const int threeStarBonus = 25;
-  static const int perfectGameBonus = 50;
-  static const int speedBonus = 15;
-  static const int streakBonusPerMatch = 5;
-  static const int dailyLoginReward = 50;
-  static const int watchAdReward = 30;
+  // Rewards (balanced for economy)
+  static const int baseCoinsPerLevel = 20;
+  static const int threeStarBonus = 40;
+  static const int perfectGameBonus = 75;
+  static const int speedBonus = 25;
+  static const int streakBonusPerMatch = 8;
+  static const int dailyLoginReward = 100;
+  static const int watchAdReward = 50;
 
   // Starting resources for new players
-  static const int startingCoins = 500;
-  static const int startingGems = 20;
+  static const int startingCoins = 750;
+  static const int startingGems = 25;
   static const int startingPeekPowerUps = 3;
   static const int startingFreezePowerUps = 2;
   static const int startingHintPowerUps = 5;
   static const int startingMagnetPowerUps = 2;
+  static const int startingUndoPowerUps = 2;
+  static const int startingShieldPowerUps = 1;
 
-  // Power-up Costs
-  static const int peekCost = 50;
-  static const int freezeCost = 40;
-  static const int hintCost = 30;
-  static const int undoCost = 25;
-  static const int magnetCost = 75;
+  // Power-up Costs (updated in power_up_model.dart)
+  static const int peekCost = 150;
+  static const int freezeCost = 120;
+  static const int hintCost = 100;
+  static const int undoCost = 80;
+  static const int magnetCost = 200;
+  static const int doubleCoinsCost = 250;
+  static const int shieldCost = 180;
 }
 
 /// Card theme symbols

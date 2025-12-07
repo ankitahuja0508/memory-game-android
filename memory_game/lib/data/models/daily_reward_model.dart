@@ -16,13 +16,13 @@ class DailyRewards {
   DailyRewards._();
 
   static const List<DailyReward> weekCycle = [
-    DailyReward(day: 1, rewards: [Reward.coins(50)]),
-    DailyReward(day: 2, rewards: [Reward.coins(75)]),
-    DailyReward(day: 3, rewards: [Reward.coins(100), Reward.powerUp('peek', 1)], isSpecial: true),
-    DailyReward(day: 4, rewards: [Reward.coins(125)]),
-    DailyReward(day: 5, rewards: [Reward.coins(150), Reward.powerUp('freeze', 1)], isSpecial: true),
-    DailyReward(day: 6, rewards: [Reward.coins(200)]),
-    DailyReward(day: 7, rewards: [Reward.coins(300), Reward.gems(10)], isSpecial: true),
+    DailyReward(day: 1, rewards: [Reward.coins(100)]),
+    DailyReward(day: 2, rewards: [Reward.coins(150)]),
+    DailyReward(day: 3, rewards: [Reward.coins(200), Reward.powerUp('peek', 1)], isSpecial: true),
+    DailyReward(day: 4, rewards: [Reward.coins(250)]),
+    DailyReward(day: 5, rewards: [Reward.coins(300), Reward.powerUp('freeze', 1), Reward.powerUp('hint', 1)], isSpecial: true),
+    DailyReward(day: 6, rewards: [Reward.coins(400), Reward.gems(5)]),
+    DailyReward(day: 7, rewards: [Reward.coins(500), Reward.gems(15), Reward.powerUp('magnet', 1)], isSpecial: true),
   ];
 
   static DailyReward getRewardForDay(int day) {

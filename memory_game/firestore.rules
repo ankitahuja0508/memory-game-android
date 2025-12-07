@@ -1,0 +1,261 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper functions for validation
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    function isValidTimestamp(timestamp) {
+      return timestamp is timestamp;
+    }
+    
+    function hasRequiredFields(fields) {
+      return request.resource.data.keys().hasAll(fields);
+    }
+    
+    // ============================================
+    // PLAYERS COLLECTION
+    // Store player progress, stats, and inventory
+    // ============================================
+    match /players/{userId} {
+      // Users can read their own player data
+      allow read: if isOwner(userId);
+      
+      // Users can create their own player document
+      allow create: if isOwner(userId)
+        && hasRequiredFields(['coins', 'gems', 'level', 'xp', 'lastUpdated'])
+        && request.resource.data.coins is int
+        && request.resource.data.coins >= 0
+        && request.resource.data.coins <= 10000000 // Max 10M coins (prevent cheating)
+        && request.resource.data.gems is int
+        && request.resource.data.gems >= 0
+        && request.resource.data.gems <= 100000 // Max 100K gems
+        && request.resource.data.level is int
+        && request.resource.data.level >= 1
+        && request.resource.data.level <= 10000 // Max level 10000
+        && request.resource.data.xp is int
+        && request.resource.data.xp >= 0
+        && isValidTimestamp(request.resource.data.lastUpdated);
+      
+      // Users can update their own player data with validation
+      allow update: if isOwner(userId)
+        && hasRequiredFields(['coins', 'gems', 'level', 'xp', 'lastUpdated'])
+        // Validate data types
+        && request.resource.data.coins is int
+        && request.resource.data.gems is int
+        && request.resource.data.level is int
+        && request.resource.data.xp is int
+        // Prevent negative values
+        && request.resource.data.coins >= 0
+        && request.resource.data.gems >= 0
+        && request.resource.data.level >= 1
+        && request.resource.data.xp >= 0
+        // Prevent unrealistic values (anti-cheat)
+        && request.resource.data.coins <= 10000000
+        && request.resource.data.gems <= 100000
+        && request.resource.data.level <= 10000
+        // Coins can't increase by more than 10K in one update (reasonable daily limit)
+        && request.resource.data.coins <= resource.data.coins + 10000
+        // Gems can't increase by more than 500 in one update
+        && request.resource.data.gems <= resource.data.gems + 500
+        // Level can't increase by more than 100 levels at once
+        && request.resource.data.level <= resource.data.level + 100
+        // Timestamp validation
+        && isValidTimestamp(request.resource.data.lastUpdated)
+        // Timestamp must be recent (within 5 minutes)
+        && request.resource.data.lastUpdated > request.time - duration.value(5, 'm')
+        && request.resource.data.lastUpdated <= request.time + duration.value(1, 'm');
+      
+      // Users can never delete their player data (preserve integrity)
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // LEADERBOARD COLLECTION
+    // Store high scores for each level
+    // ============================================
+    match /leaderboard/{scoreId} {
+      // Anyone can read leaderboard (public)
+      allow read: if true;
+      
+      // Only authenticated users can submit scores
+      allow create: if isSignedIn()
+        && hasRequiredFields(['userId', 'level', 'score', 'timeSeconds', 'timestamp'])
+        // Must be their own score
+        && request.resource.data.userId == request.auth.uid
+        // Validate data types
+        && request.resource.data.level is int
+        && request.resource.data.score is int
+        && request.resource.data.timeSeconds is int
+        // Validate ranges
+        && request.resource.data.level >= 1
+        && request.resource.data.level <= 10000
+        && request.resource.data.score >= 0
+        && request.resource.data.score <= 1000000 // Max score 1M per level
+        && request.resource.data.timeSeconds >= 0
+        && request.resource.data.timeSeconds <= 7200 // Max 2 hours per level
+        // Timestamp validation
+        && isValidTimestamp(request.resource.data.timestamp)
+        && request.resource.data.timestamp > request.time - duration.value(1, 'm')
+        && request.resource.data.timestamp <= request.time + duration.value(1, 'm')
+        // Rate limit: max 100 scores per user total (prevent spam)
+        && !exists(/databases/$(database)/documents/leaderboard/$(request.auth.uid + '_100'));
+      
+      // Leaderboard entries cannot be updated or deleted (immutable)
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // LEVEL_PROGRESS COLLECTION
+    // Store individual level completion data
+    // ============================================
+    match /players/{userId}/levelProgress/{levelId} {
+      // Users can read their own level progress
+      allow read: if isOwner(userId);
+      
+      // Users can create/update their own level progress
+      allow write: if isOwner(userId)
+        && hasRequiredFields(['level', 'stars', 'bestTime', 'bestMoves', 'lastPlayed'])
+        && request.resource.data.level is int
+        && request.resource.data.level >= 1
+        && request.resource.data.stars is int
+        && request.resource.data.stars >= 0
+        && request.resource.data.stars <= 3
+        && request.resource.data.bestTime is int
+        && request.resource.data.bestTime >= 0
+        && request.resource.data.bestMoves is int
+        && request.resource.data.bestMoves >= 0
+        && isValidTimestamp(request.resource.data.lastPlayed);
+      
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // ACHIEVEMENTS COLLECTION
+    // Store unlocked achievements per user
+    // ============================================
+    match /players/{userId}/achievements/{achievementId} {
+      // Users can read their own achievements
+      allow read: if isOwner(userId);
+      
+      // Users can create their own achievement unlocks
+      allow create: if isOwner(userId)
+        && hasRequiredFields(['achievementId', 'unlockedAt'])
+        && request.resource.data.achievementId is string
+        && isValidTimestamp(request.resource.data.unlockedAt)
+        && request.resource.data.unlockedAt > request.time - duration.value(5, 'm')
+        && request.resource.data.unlockedAt <= request.time + duration.value(1, 'm');
+      
+      // Achievements are immutable once unlocked
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // DAILY_REWARDS COLLECTION
+    // Track daily reward claims per user
+    // ============================================
+    match /players/{userId}/dailyRewards/{rewardId} {
+      // Users can read their own daily rewards
+      allow read: if isOwner(userId);
+      
+      // Users can create daily reward claims
+      allow create: if isOwner(userId)
+        && hasRequiredFields(['day', 'claimedAt', 'coins', 'gems'])
+        && request.resource.data.day is int
+        && request.resource.data.day >= 1
+        && request.resource.data.day <= 7
+        && request.resource.data.coins is int
+        && request.resource.data.coins >= 0
+        && request.resource.data.coins <= 5000 // Max daily reward
+        && request.resource.data.gems is int
+        && request.resource.data.gems >= 0
+        && request.resource.data.gems <= 100 // Max daily gems
+        && isValidTimestamp(request.resource.data.claimedAt)
+        && request.resource.data.claimedAt > request.time - duration.value(5, 'm')
+        && request.resource.data.claimedAt <= request.time + duration.value(1, 'm');
+      
+      // Daily rewards are immutable
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // PURCHASES COLLECTION (for IAP tracking)
+    // Store in-app purchase receipts
+    // ============================================
+    match /players/{userId}/purchases/{purchaseId} {
+      // Users can read their own purchases
+      allow read: if isOwner(userId);
+      
+      // Users can create purchase records (verified by Cloud Function)
+      allow create: if isOwner(userId)
+        && hasRequiredFields(['productId', 'purchaseToken', 'purchasedAt', 'verified'])
+        && request.resource.data.productId is string
+        && request.resource.data.purchaseToken is string
+        && request.resource.data.verified == false // Must be verified by backend
+        && isValidTimestamp(request.resource.data.purchasedAt);
+      
+      // Only Cloud Functions can mark purchases as verified
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // ANALYTICS EVENTS (optional)
+    // Store custom analytics events
+    // ============================================
+    match /analytics/{eventId} {
+      // Only server/admin can read analytics
+      allow read: if false;
+      
+      // Authenticated users can write events with rate limiting
+      allow create: if isSignedIn()
+        && hasRequiredFields(['userId', 'eventName', 'timestamp'])
+        && request.resource.data.userId == request.auth.uid
+        && isValidTimestamp(request.resource.data.timestamp)
+        && request.resource.data.timestamp > request.time - duration.value(1, 'm')
+        && request.resource.data.timestamp <= request.time + duration.value(1, 'm');
+      
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // REPORTS COLLECTION (for user reports)
+    // Allow users to report bugs or cheaters
+    // ============================================
+    match /reports/{reportId} {
+      // Only admins can read reports
+      allow read: if false;
+      
+      // Authenticated users can submit reports (rate limited)
+      allow create: if isSignedIn()
+        && hasRequiredFields(['reporterId', 'type', 'description', 'timestamp'])
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.type in ['bug', 'cheater', 'abuse', 'other']
+        && request.resource.data.description is string
+        && request.resource.data.description.size() <= 1000 // Max 1000 characters
+        && isValidTimestamp(request.resource.data.timestamp);
+      
+      allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // DEFAULT DENY
+    // Deny all other operations by default
+    // ============================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

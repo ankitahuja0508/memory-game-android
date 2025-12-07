@@ -25,6 +25,7 @@ class GameState extends Equatable {
   final Duration previewTimeRemaining; // NEW: For preview countdown
   final bool isPeekActive;
   final bool isFreezeActive;
+  final bool isHintActive;
   final Duration? freezeTimeRemaining;
   final LevelConfig? levelConfig;
 
@@ -43,9 +44,13 @@ class GameState extends Equatable {
     this.previewTimeRemaining = Duration.zero,
     this.isPeekActive = false,
     this.isFreezeActive = false,
+    this.isHintActive = false,
     this.freezeTimeRemaining,
     this.levelConfig,
   });
+
+  /// Returns true if any power-up is active that should pause the timer
+  bool get isTimerPaused => isPeekActive || isFreezeActive || isHintActive;
 
   bool get isPlaying => phase == GamePhase.playing;
   bool get isPaused => phase == GamePhase.paused;
@@ -80,6 +85,7 @@ class GameState extends Equatable {
     Duration? previewTimeRemaining,
     bool? isPeekActive,
     bool? isFreezeActive,
+    bool? isHintActive,
     Duration? freezeTimeRemaining,
     LevelConfig? levelConfig,
   }) {
@@ -98,6 +104,7 @@ class GameState extends Equatable {
       previewTimeRemaining: previewTimeRemaining ?? this.previewTimeRemaining,
       isPeekActive: isPeekActive ?? this.isPeekActive,
       isFreezeActive: isFreezeActive ?? this.isFreezeActive,
+      isHintActive: isHintActive ?? this.isHintActive,
       freezeTimeRemaining: freezeTimeRemaining ?? this.freezeTimeRemaining,
       levelConfig: levelConfig ?? this.levelConfig,
     );
@@ -107,6 +114,6 @@ class GameState extends Equatable {
   List<Object?> get props => [
     phase, level, cards, selectedIndices, moves, matches, mistakes,
     currentStreak, longestStreak, elapsedTime, timeLimit, previewTimeRemaining,
-    isPeekActive, isFreezeActive, freezeTimeRemaining, levelConfig,
+    isPeekActive, isFreezeActive, isHintActive, freezeTimeRemaining, levelConfig,
   ];
 }

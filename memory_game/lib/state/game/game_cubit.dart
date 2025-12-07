@@ -105,7 +105,8 @@ class GameCubit extends Cubit<GameState> {
         return;
       }
 
-      if (!state.isFreezeActive) {
+      // Pause timer when any power-up is active (peek, freeze, hint)
+      if (!state.isTimerPaused) {
         final newElapsed = state.elapsedTime + const Duration(seconds: 1);
         
         if (state.timeLimit != null && newElapsed >= state.timeLimit!) {
@@ -312,17 +313,20 @@ class GameCubit extends Cubit<GameState> {
     newCards[pairIndices[0]] = newCards[pairIndices[0]].copyWith(state: CardState.hinted);
     newCards[pairIndices[1]] = newCards[pairIndices[1]].copyWith(state: CardState.hinted);
 
-    emit(state.copyWith(cards: newCards));
+    // Set hint active (pauses timer)
+    emit(state.copyWith(cards: newCards, isHintActive: true));
 
     // Remove hint after 3 seconds (gives user time to tap both cards)
     Timer(const Duration(seconds: 3), () {
+      if (!state.isHintActive) return; // Already deactivated
+      
       final resetCards = state.cards.map((c) {
         if (c.state == CardState.hinted) {
           return c.copyWith(state: CardState.faceDown);
         }
         return c;
       }).toList();
-      emit(state.copyWith(cards: resetCards));
+      emit(state.copyWith(cards: resetCards, isHintActive: false));
     });
   }
 

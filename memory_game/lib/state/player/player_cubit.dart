@@ -39,8 +39,18 @@ class PlayerCubit extends Cubit<PlayerState> {
     ));
   }
 
+  /// Newly unlocked achievements from the last level completion
+  List<String> _lastUnlockedAchievements = [];
+  List<String> get lastUnlockedAchievements => _lastUnlockedAchievements;
+  
+  /// Newly available themes (can be unlocked now)
+  List<String> _lastUnlockedThemeAvailability = [];
+  List<String> get lastUnlockedThemeAvailability => _lastUnlockedThemeAvailability;
+
   Future<void> updateLevelProgress(GameResult result) async {
     final current = state.levelProgress[result.level];
+    final previousHighestLevel = state.highestUnlockedLevel;
+    
     final newProgress = LevelProgress(
       level: result.level,
       stars: current != null && current.stars > result.stars ? current.stars : result.stars,
@@ -57,24 +67,55 @@ class PlayerCubit extends Cubit<PlayerState> {
     final newLevelProgress = Map<int, LevelProgress>.from(state.levelProgress);
     newLevelProgress[result.level] = newProgress;
 
-    // Check achievements
-    _achievementService.checkAndUnlock(
+    // Calculate stats for achievements
+    final levelsCompleted = newLevelProgress.values.where((p) => p.completed).length;
+    final threeStarCount = newLevelProgress.values.where((p) => p.stars >= 3).length;
+    final newTotalStars = state.player.totalStars + result.stars;
+    final newTotalCoinsEarned = state.player.totalCoinsEarned + result.totalCoins;
+    final newTotalMatchesMade = state.player.totalMatchesMade + result.matches;
+    final newPerfectGames = result.isPerfect ? state.player.perfectGames + 1 : state.player.perfectGames;
+    final levelTimeSeconds = result.timeTaken.inSeconds;
+    final newFastestTime = levelTimeSeconds < state.player.fastestLevelTime 
+        ? levelTimeSeconds 
+        : state.player.fastestLevelTime;
+    final newBossLevelsCompleted = (result.level % 10 == 0) 
+        ? state.player.bossLevelsCompleted + 1 
+        : state.player.bossLevelsCompleted;
+
+    // Check achievements and store newly unlocked ones
+    _lastUnlockedAchievements = _achievementService.checkAndUnlock(
       matchesMade: result.matches,
-      levelsCompleted: newLevelProgress.values.where((p) => p.completed).length,
+      levelsCompleted: levelsCompleted,
       currentStreak: result.longestStreak,
       perfectGame: result.isPerfect,
+      perfectGamesCount: newPerfectGames,
+      totalStars: newTotalStars,
+      themesUnlocked: state.player.unlockedThemes.length,
+      dailyStreak: state.player.currentDailyStreak,
+      totalCoinsEarned: newTotalCoinsEarned,
+      powerUpsUsed: state.player.powerUpsUsed,
+      threeStarLevels: threeStarCount,
+      totalMatches: newTotalMatchesMade,
+      bossLevelsCompleted: newBossLevelsCompleted,
+      fastestLevelSeconds: newFastestTime,
     );
 
     // Update player
     final newPlayer = state.player.copyWith(
       coins: state.player.coins + result.totalCoins,
       xp: state.player.xp + result.xpEarned,
+      totalStars: newTotalStars,
       totalGamesPlayed: state.player.totalGamesPlayed + 1,
-      perfectGames: result.isPerfect ? state.player.perfectGames + 1 : state.player.perfectGames,
+      perfectGames: newPerfectGames,
       longestStreak: result.longestStreak > state.player.longestStreak
           ? result.longestStreak
           : state.player.longestStreak,
       lastPlayedDate: DateTime.now(),
+      totalCoinsEarned: newTotalCoinsEarned,
+      totalMatchesMade: newTotalMatchesMade,
+      threeStarLevels: threeStarCount,
+      bossLevelsCompleted: newBossLevelsCompleted,
+      fastestLevelTime: newFastestTime,
     );
 
     emit(state.copyWith(
@@ -82,6 +123,32 @@ class PlayerCubit extends Cubit<PlayerState> {
       levelProgress: newLevelProgress,
       achievementProgress: _achievementService.progress,
     ));
+    
+    // Calculate new highest level after state update
+    final newHighestLevel = state.highestUnlockedLevel;
+    
+    // Check for newly available themes (themes that just became unlockable)
+    _lastUnlockedThemeAvailability = [];
+    if (newHighestLevel > previousHighestLevel) {
+      // Import themes list from level generator
+      const themeUnlockLevels = {
+        'space': 8,
+        'food': 15,
+        'nature': 25,
+        'sports': 35,
+        'travel': 45,
+        'emotions': 55,
+        'music': 70,
+      };
+      
+      for (final entry in themeUnlockLevels.entries) {
+        if (previousHighestLevel < entry.value && newHighestLevel >= entry.value) {
+          if (!state.player.unlockedThemes.contains(entry.key)) {
+            _lastUnlockedThemeAvailability.add(entry.key);
+          }
+        }
+      }
+    }
 
     // Save
     await _storageService.savePlayer(newPlayer);
@@ -154,9 +221,26 @@ class PlayerCubit extends Cubit<PlayerState> {
     final newInventory = Map<String, int>.from(state.player.powerUpInventory);
     newInventory[powerUpId] = count - 1;
 
-    final newPlayer = state.player.copyWith(powerUpInventory: newInventory);
-    emit(state.copyWith(player: newPlayer));
+    final newPowerUpsUsed = state.player.powerUpsUsed + 1;
+    
+    // Check power-up achievements
+    final newlyUnlocked = _achievementService.checkAndUnlock(
+      powerUpsUsed: newPowerUpsUsed,
+    );
+    if (newlyUnlocked.isNotEmpty) {
+      _lastUnlockedAchievements = newlyUnlocked;
+    }
+
+    final newPlayer = state.player.copyWith(
+      powerUpInventory: newInventory,
+      powerUpsUsed: newPowerUpsUsed,
+    );
+    emit(state.copyWith(
+      player: newPlayer,
+      achievementProgress: _achievementService.progress,
+    ));
     await _storageService.savePlayer(newPlayer);
+    await _storageService.saveAchievements(_achievementService.progress);
     return true;
   }
 
@@ -164,9 +248,22 @@ class PlayerCubit extends Cubit<PlayerState> {
     if (state.player.unlockedThemes.contains(themeId)) return;
 
     final newThemes = [...state.player.unlockedThemes, themeId];
+    
+    // Check theme collection achievements
+    final newlyUnlocked = _achievementService.checkAndUnlock(
+      themesUnlocked: newThemes.length,
+    );
+    if (newlyUnlocked.isNotEmpty) {
+      _lastUnlockedAchievements = newlyUnlocked;
+    }
+    
     final newPlayer = state.player.copyWith(unlockedThemes: newThemes);
-    emit(state.copyWith(player: newPlayer));
+    emit(state.copyWith(
+      player: newPlayer,
+      achievementProgress: _achievementService.progress,
+    ));
     await _storageService.savePlayer(newPlayer);
+    await _storageService.saveAchievements(_achievementService.progress);
   }
 
   Future<void> equipTheme(String themeId) async {

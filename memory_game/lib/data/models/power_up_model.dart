@@ -36,8 +36,8 @@ class PowerUpConfigs {
     name: 'Peek',
     description: 'Reveal all cards for 3 seconds',
     icon: '👁️',
-    coinCost: 50,
-    gemCost: 2,
+    coinCost: 150,
+    gemCost: 5,
     duration: Duration(seconds: 3),
   );
 
@@ -47,8 +47,8 @@ class PowerUpConfigs {
     name: 'Freeze',
     description: 'Pause timer for 10 seconds',
     icon: '❄️',
-    coinCost: 40,
-    gemCost: 2,
+    coinCost: 120,
+    gemCost: 4,
     duration: Duration(seconds: 10),
   );
 
@@ -58,8 +58,8 @@ class PowerUpConfigs {
     name: 'Hint',
     description: 'Highlight a matching pair',
     icon: '🔦',
-    coinCost: 30,
-    gemCost: 1,
+    coinCost: 100,
+    gemCost: 3,
   );
 
   static const PowerUpConfig undo = PowerUpConfig(
@@ -68,21 +68,41 @@ class PowerUpConfigs {
     name: 'Undo',
     description: 'Undo your last wrong match',
     icon: '↩️',
-    coinCost: 25,
-    gemCost: 1,
+    coinCost: 80,
+    gemCost: 3,
   );
 
   static const PowerUpConfig magnet = PowerUpConfig(
     type: PowerUpType.magnet,
     id: 'magnet',
     name: 'Magnet',
-    description: 'Auto-match one pair',
+    description: 'Auto-match one pair instantly',
     icon: '🧲',
-    coinCost: 75,
-    gemCost: 3,
+    coinCost: 200,
+    gemCost: 7,
   );
 
-  static const List<PowerUpConfig> all = [peek, freeze, hint, magnet];
+  static const PowerUpConfig doubleCoins = PowerUpConfig(
+    type: PowerUpType.doubleCoins,
+    id: 'double_coins',
+    name: 'Double Coins',
+    description: '2x coins for the next level',
+    icon: '💰',
+    coinCost: 250,
+    gemCost: 8,
+  );
+
+  static const PowerUpConfig shield = PowerUpConfig(
+    type: PowerUpType.shield,
+    id: 'shield',
+    name: 'Shield',
+    description: 'Protect from 1 wrong match penalty',
+    icon: '🛡️',
+    coinCost: 180,
+    gemCost: 6,
+  );
+
+  static const List<PowerUpConfig> all = [peek, freeze, hint, undo, magnet, doubleCoins, shield];
 
   static PowerUpConfig getConfig(PowerUpType type) {
     return all.firstWhere((config) => config.type == type);

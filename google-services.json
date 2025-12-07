@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "452690639330",
+    "project_id": "memory-match---brain-training",
+    "storage_bucket": "memory-match---brain-training.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:452690639330:android:41fb352d5ccdc9406a21bb",
+        "android_client_info": {
+          "package_name": "com.aexyn.memorymatch.memory_game"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB3yz2PMArELeL7NPH1ECDtSjx42JlevZ4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

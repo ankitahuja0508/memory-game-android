@@ -233,7 +233,7 @@ class ResultDialog extends StatelessWidget {
                     ),
                     icon: const Icon(Icons.arrow_forward_rounded, size: 24),
                     label: Text(
-                      'Level ${result.level + 1} →',
+                      'Level ${result.level + 1}',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,

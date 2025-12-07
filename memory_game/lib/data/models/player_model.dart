@@ -22,6 +22,13 @@ class PlayerModel extends Equatable {
   final String equippedTheme;
   final Map<String, int> powerUpInventory;
   final int hintsRemaining;
+  // Additional tracking for achievements
+  final int totalCoinsEarned;
+  final int totalMatchesMade;
+  final int powerUpsUsed;
+  final int threeStarLevels;
+  final int bossLevelsCompleted;
+  final int fastestLevelTime; // in seconds
 
   const PlayerModel({
     required this.id,
@@ -43,6 +50,12 @@ class PlayerModel extends Equatable {
     this.equippedTheme = 'animals',
     this.powerUpInventory = const {},
     this.hintsRemaining = 3,
+    this.totalCoinsEarned = 0,
+    this.totalMatchesMade = 0,
+    this.powerUpsUsed = 0,
+    this.threeStarLevels = 0,
+    this.bossLevelsCompleted = 0,
+    this.fastestLevelTime = 999,
   });
 
   int get xpForNextLevel => (100 * (1.15 * playerLevel)).round();
@@ -73,6 +86,12 @@ class PlayerModel extends Equatable {
     String? equippedTheme,
     Map<String, int>? powerUpInventory,
     int? hintsRemaining,
+    int? totalCoinsEarned,
+    int? totalMatchesMade,
+    int? powerUpsUsed,
+    int? threeStarLevels,
+    int? bossLevelsCompleted,
+    int? fastestLevelTime,
   }) {
     return PlayerModel(
       id: id ?? this.id,
@@ -94,6 +113,12 @@ class PlayerModel extends Equatable {
       equippedTheme: equippedTheme ?? this.equippedTheme,
       powerUpInventory: powerUpInventory ?? this.powerUpInventory,
       hintsRemaining: hintsRemaining ?? this.hintsRemaining,
+      totalCoinsEarned: totalCoinsEarned ?? this.totalCoinsEarned,
+      totalMatchesMade: totalMatchesMade ?? this.totalMatchesMade,
+      powerUpsUsed: powerUpsUsed ?? this.powerUpsUsed,
+      threeStarLevels: threeStarLevels ?? this.threeStarLevels,
+      bossLevelsCompleted: bossLevelsCompleted ?? this.bossLevelsCompleted,
+      fastestLevelTime: fastestLevelTime ?? this.fastestLevelTime,
     );
   }
 
@@ -117,6 +142,12 @@ class PlayerModel extends Equatable {
     'equippedTheme': equippedTheme,
     'powerUpInventory': powerUpInventory,
     'hintsRemaining': hintsRemaining,
+    'totalCoinsEarned': totalCoinsEarned,
+    'totalMatchesMade': totalMatchesMade,
+    'powerUpsUsed': powerUpsUsed,
+    'threeStarLevels': threeStarLevels,
+    'bossLevelsCompleted': bossLevelsCompleted,
+    'fastestLevelTime': fastestLevelTime,
   };
 
   factory PlayerModel.fromJson(Map<String, dynamic> json) => PlayerModel(
@@ -147,6 +178,12 @@ class PlayerModel extends Equatable {
         ? Map<String, int>.from(json['powerUpInventory'] as Map)
         : const {},
     hintsRemaining: json['hintsRemaining'] as int? ?? 3,
+    totalCoinsEarned: json['totalCoinsEarned'] as int? ?? 0,
+    totalMatchesMade: json['totalMatchesMade'] as int? ?? 0,
+    powerUpsUsed: json['powerUpsUsed'] as int? ?? 0,
+    threeStarLevels: json['threeStarLevels'] as int? ?? 0,
+    bossLevelsCompleted: json['bossLevelsCompleted'] as int? ?? 0,
+    fastestLevelTime: json['fastestLevelTime'] as int? ?? 999,
   );
 
   factory PlayerModel.newPlayer() {
@@ -159,6 +196,8 @@ class PlayerModel extends Equatable {
         'freeze': AppConstants.startingFreezePowerUps,
         'hint': AppConstants.startingHintPowerUps,
         'magnet': AppConstants.startingMagnetPowerUps,
+        'undo': AppConstants.startingUndoPowerUps,
+        'shield': AppConstants.startingShieldPowerUps,
       },
     );
   }
@@ -168,5 +207,7 @@ class PlayerModel extends Equatable {
     id, name, coins, gems, xp, playerLevel, currentGameLevel,
     totalStars, totalGamesPlayed, perfectGames, longestStreak,
     currentDailyStreak, unlockedThemes, equippedTheme, powerUpInventory,
+    totalCoinsEarned, totalMatchesMade, powerUpsUsed, threeStarLevels,
+    bossLevelsCompleted, fastestLevelTime,
   ];
 }

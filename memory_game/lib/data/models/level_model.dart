@@ -18,7 +18,8 @@ class GameCardTheme extends Equatable {
   final String icon;
   final List<String> symbols;
   final int unlocksAtLevel;
-  final int cost;
+  final int cost; // Coins to unlock
+  final int equipCost; // Gems to equip (0 = free to equip)
 
   const GameCardTheme({
     required this.id,
@@ -27,10 +28,11 @@ class GameCardTheme extends Equatable {
     required this.symbols,
     this.unlocksAtLevel = 1,
     this.cost = 0,
+    this.equipCost = 0,
   });
 
   @override
-  List<Object?> get props => [id, name, symbols, unlocksAtLevel];
+  List<Object?> get props => [id, name, symbols, unlocksAtLevel, cost, equipCost];
 }
 
 /// Configuration for a game level

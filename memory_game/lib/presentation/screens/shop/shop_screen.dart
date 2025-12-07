@@ -4,33 +4,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/power_up_model.dart';
-import '../../../domain/services/level_generator_service.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
 import '../../widgets/common/currency_display.dart';
 
-class ShopScreen extends StatefulWidget {
+class ShopScreen extends StatelessWidget {
   const ShopScreen({super.key});
-
-  @override
-  State<ShopScreen> createState() => _ShopScreenState();
-}
-
-class _ShopScreenState extends State<ShopScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-
-  @override
-  void initState() {
-    super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,14 +26,6 @@ class _ShopScreenState extends State<ShopScreen> with SingleTickerProviderStateM
           ),
           title: Text('Shop', style: AppTextStyles.headline3),
           centerTitle: true,
-          bottom: TabBar(
-            controller: _tabController,
-            indicatorColor: AppColors.primary,
-            tabs: const [
-              Tab(text: 'Power-ups'),
-              Tab(text: 'Themes'),
-            ],
-          ),
         ),
         body: BlocBuilder<PlayerCubit, PlayerState>(
           builder: (context, state) {
@@ -67,16 +39,37 @@ class _ShopScreenState extends State<ShopScreen> with SingleTickerProviderStateM
                     gems: state.player.gems,
                   ),
                 ),
-
-                // Tab Content
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _PowerUpsTab(playerState: state),
-                      _ThemesTab(playerState: state),
-                    ],
+                
+                // Info text
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withAlpha(30),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.primary.withAlpha(50)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Text('💡', style: TextStyle(fontSize: 18)),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Themes can be unlocked from the home screen!',
+                            style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
+                ),
+
+                const SizedBox(height: 8),
+
+                // Power-ups List
+                Expanded(
+                  child: _PowerUpsTab(playerState: state),
                 ),
               ],
             );
@@ -116,60 +109,67 @@ class _PowerUpsTab extends StatelessWidget {
   }
 
   void _buyPowerUp(BuildContext context, String id, bool useGems) async {
+    final config = PowerUpConfigs.getConfigById(id);
     final success = await context.read<PlayerCubit>().buyPowerUp(id, useGems: useGems);
     if (context.mounted) {
+      ScaffoldMessenger.of(context).clearSnackBars();
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(success ? 'Purchase successful!' : 'Not enough currency!'),
+          content: Container(
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withAlpha(30),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    success ? (config?.icon ?? '🎁') : '😢',
+                    style: const TextStyle(fontSize: 22),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        success ? 'Power-up acquired!' : 'Oops!',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      ),
+                      Text(
+                        success 
+                            ? '${config?.name ?? 'Item'} added to inventory' 
+                            : 'Not enough ${useGems ? 'gems' : 'coins'}',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.white.withAlpha(200),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  success ? Icons.check_circle : Icons.error,
+                  color: Colors.white,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
           backgroundColor: success ? AppColors.success : AppColors.error,
-        ),
-      );
-    }
-  }
-}
-
-class _ThemesTab extends StatelessWidget {
-  final PlayerState playerState;
-
-  const _ThemesTab({required this.playerState});
-
-  @override
-  Widget build(BuildContext context) {
-    const themes = LevelGeneratorService.themes;
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: themes.length,
-      itemBuilder: (context, index) {
-        final theme = themes[index];
-        final isUnlocked = playerState.player.unlockedThemes.contains(theme.id);
-        final isEquipped = playerState.player.equippedTheme == theme.id;
-
-        return _ThemeItem(
-          icon: theme.icon,
-          name: theme.name,
-          symbols: theme.symbols.take(6).join(' '),
-          cost: theme.cost,
-          isUnlocked: isUnlocked,
-          isEquipped: isEquipped,
-          onBuy: () => _buyTheme(context, theme.id, theme.cost),
-          onEquip: () => context.read<PlayerCubit>().equipTheme(theme.id),
-        ).animate(delay: Duration(milliseconds: 100 * index)).fadeIn().slideX(begin: 0.1);
-      },
-    );
-  }
-
-  void _buyTheme(BuildContext context, String id, int cost) async {
-    final cubit = context.read<PlayerCubit>();
-    final success = await cubit.spendCoins(cost);
-    if (success) {
-      await cubit.unlockTheme(id);
-    }
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(success ? 'Theme unlocked!' : 'Not enough coins!'),
-          backgroundColor: success ? AppColors.success : AppColors.error,
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          margin: const EdgeInsets.all(16),
+          elevation: 8,
+          duration: const Duration(seconds: 2),
         ),
       );
     }
@@ -287,103 +287,3 @@ class _ShopItem extends StatelessWidget {
   }
 }
 
-class _ThemeItem extends StatelessWidget {
-  final String icon;
-  final String name;
-  final String symbols;
-  final int cost;
-  final bool isUnlocked;
-  final bool isEquipped;
-  final VoidCallback onBuy;
-  final VoidCallback onEquip;
-
-  const _ThemeItem({
-    required this.icon,
-    required this.name,
-    required this.symbols,
-    required this.cost,
-    required this.isUnlocked,
-    required this.isEquipped,
-    required this.onBuy,
-    required this.onEquip,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface.withAlpha(179),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isEquipped ? AppColors.primary : AppColors.primary.withAlpha(51),
-          width: isEquipped ? 2 : 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withAlpha(51),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Center(child: Text(icon, style: const TextStyle(fontSize: 28))),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(name, style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 4),
-                Text(symbols, style: AppTextStyles.caption),
-              ],
-            ),
-          ),
-          if (!isUnlocked)
-            GestureDetector(
-              onTap: onBuy,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(colors: AppColors.primaryGradient),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
-                  children: [
-                    const Text('💰', style: TextStyle(fontSize: 14)),
-                    const SizedBox(width: 4),
-                    Text('$cost', style: AppTextStyles.body2.copyWith(color: Colors.white, fontWeight: FontWeight.bold)),
-                  ],
-                ),
-              ),
-            )
-          else if (isEquipped)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: AppColors.success.withAlpha(51),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text('Equipped', style: AppTextStyles.body2.copyWith(color: AppColors.success)),
-            )
-          else
-            GestureDetector(
-              onTap: onEquip,
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                decoration: BoxDecoration(
-                  border: Border.all(color: AppColors.primary),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text('Equip', style: AppTextStyles.body2.copyWith(color: AppColors.primary)),
-              ),
-            ),
-        ],
-      ),
-    );
-  }
-}

@@ -33,6 +33,24 @@ class PlayerState extends Equatable {
     return levelProgress.values.where((p) => p.completed).length;
   }
 
+  /// Count of achievements that are completed but rewards not claimed
+  int get unclaimedAchievementCount {
+    return achievementProgress.values
+        .where((p) => p.isCompleted && !p.isRewardClaimed)
+        .length;
+  }
+
+  /// Whether daily reward is available to claim
+  bool get hasDailyRewardAvailable {
+    return dailyRewardStatus.canClaimToday;
+  }
+
+  /// Check if a theme can be unlocked at current level
+  bool canUnlockTheme(String themeId, int requiredLevel) {
+    final isUnlocked = player.unlockedThemes.contains(themeId);
+    return !isUnlocked && highestUnlockedLevel >= requiredLevel;
+  }
+
   PlayerState copyWith({
     PlayerModel? player,
     SettingsModel? settings,

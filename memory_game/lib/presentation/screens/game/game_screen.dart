@@ -5,6 +5,8 @@ import 'package:confetti/confetti.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../data/models/achievement_model.dart';
+import '../../../data/models/level_model.dart';
 import '../../../data/models/power_up_model.dart';
 import '../../../domain/services/services.dart';
 import '../../../state/game/game_cubit.dart';
@@ -26,15 +28,17 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> {
+class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
   late GameCubit _gameCubit;
   late ConfettiController _confettiController;
   late AudioService _audioService;
   int _currentLevel = 1;
+  bool _wasPlayingBeforeBackground = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _currentLevel = widget.level;
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
     
@@ -57,9 +61,38 @@ class _GameScreenState extends State<GameScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _confettiController.dispose();
     _gameCubit.close();
     super.dispose();
+  }
+  
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    
+    if (state == AppLifecycleState.paused || state == AppLifecycleState.inactive) {
+      // App going to background or screen locked
+      final gameState = _gameCubit.state;
+      _wasPlayingBeforeBackground = gameState.phase == GamePhase.playing || 
+                                     gameState.phase == GamePhase.preview;
+      
+      if (_wasPlayingBeforeBackground && !gameState.isPaused) {
+        _gameCubit.pauseGame();
+      }
+    } else if (state == AppLifecycleState.resumed) {
+      // App coming back to foreground
+      // Game stays paused - user needs to manually resume via pause dialog
+      // This is intentional so user can see the game state before continuing
+      if (_wasPlayingBeforeBackground) {
+        // Show pause dialog when returning
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted && _gameCubit.state.isPaused) {
+            _showPauseDialog();
+          }
+        });
+      }
+    }
   }
 
   void _handlePowerUp(PowerUpType type) {
@@ -225,9 +258,154 @@ class _GameScreenState extends State<GameScreen> {
     _gameCubit.restartLevel();
   }
 
+  void _showPauseDialog() {
+    _gameCubit.pauseGame();
+    _audioService.playButton();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierColor: Colors.black87,
+      builder: (dialogContext) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                AppColors.surface,
+                AppColors.surfaceLight,
+              ],
+            ),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.primary.withAlpha(100), width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primary.withAlpha(50),
+                blurRadius: 20,
+                spreadRadius: 2,
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Pause Icon
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(30),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.pause_circle_filled,
+                  size: 48,
+                  color: AppColors.accent,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Title
+              Text(
+                'Game Paused',
+                style: AppTextStyles.headline2.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              
+              // Level info
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withAlpha(30),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Level $_currentLevel',
+                  style: AppTextStyles.body1.copyWith(color: AppColors.accent),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Resume Button
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                    _gameCubit.resumeGame();
+                    _audioService.playButton();
+                  },
+                  icon: const Icon(Icons.play_arrow_rounded, size: 28),
+                  label: const Text('Resume', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.success,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              // Restart Button
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                    _restartLevel();
+                  },
+                  icon: const Icon(Icons.refresh_rounded, size: 24),
+                  label: const Text('Restart Level', style: TextStyle(fontSize: 16)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.accent,
+                    side: BorderSide(color: AppColors.accent.withAlpha(150)),
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              
+              // Home Button
+              SizedBox(
+                width: double.infinity,
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(dialogContext);
+                    Navigator.pop(context);
+                  },
+                  icon: Icon(Icons.home_rounded, size: 24, color: AppColors.textSecondary),
+                  label: Text(
+                    'Exit to Home',
+                    style: TextStyle(fontSize: 16, color: AppColors.textSecondary),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ).animate().scale(
+          begin: const Offset(0.8, 0.8),
+          end: const Offset(1, 1),
+          duration: 200.ms,
+          curve: Curves.easeOutBack,
+        ),
+      ),
+    );
+  }
+
   void _showResultDialog() {
     final result = _gameCubit.getResult();
-    context.read<PlayerCubit>().updateLevelProgress(result);
+    final playerCubit = context.read<PlayerCubit>();
+    playerCubit.updateLevelProgress(result);
     
     // Play success sound and show confetti
     _audioService.playSuccess();
@@ -239,18 +417,272 @@ class _GameScreenState extends State<GameScreen> {
       builder: (_) => ResultDialog(
         result: result,
         onNextLevel: () {
-          Navigator.pop(context);
-          _startNextLevel();
-        },
-        onReplay: () {
-          Navigator.pop(context);
-          _restartLevel();
-        },
-        onHome: () {
-          Navigator.pop(context);
           _confettiController.stop();
           Navigator.pop(context);
+          
+          // Show unlock notifications before starting next level
+          _showUnlockNotifications(playerCubit, () => _startNextLevel());
         },
+        onReplay: () {
+          _confettiController.stop();
+          Navigator.pop(context);
+          _showUnlockNotifications(playerCubit, () => _restartLevel());
+        },
+        onHome: () {
+          _confettiController.stop();
+          Navigator.pop(context);
+          _showUnlockNotifications(playerCubit, () => Navigator.pop(context));
+        },
+      ),
+    );
+  }
+  
+  void _showUnlockNotifications(PlayerCubit playerCubit, VoidCallback onComplete) {
+    final unlockedAchievements = playerCubit.lastUnlockedAchievements;
+    final unlockedThemeAvailability = playerCubit.lastUnlockedThemeAvailability;
+    
+    // If no unlocks, proceed immediately
+    if (unlockedAchievements.isEmpty && unlockedThemeAvailability.isEmpty) {
+      onComplete();
+      return;
+    }
+    
+    // Show achievement unlock popup first
+    if (unlockedAchievements.isNotEmpty) {
+      _showAchievementUnlockDialog(unlockedAchievements, () {
+        // Then show theme availability if any
+        if (unlockedThemeAvailability.isNotEmpty) {
+          _showThemeUnlockAvailableDialog(unlockedThemeAvailability, onComplete);
+        } else {
+          onComplete();
+        }
+      });
+    } else if (unlockedThemeAvailability.isNotEmpty) {
+      _showThemeUnlockAvailableDialog(unlockedThemeAvailability, onComplete);
+    }
+  }
+  
+  void _showAchievementUnlockDialog(List<String> achievementIds, VoidCallback onDismiss) {
+    final achievements = achievementIds
+        .map((id) => Achievements.getById(id))
+        .where((a) => a != null)
+        .cast<Achievement>()
+        .toList();
+    
+    if (achievements.isEmpty) {
+      onDismiss();
+      return;
+    }
+    
+    _audioService.playAchievement();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Column(
+          children: [
+            const Text('🏆', style: TextStyle(fontSize: 48))
+                .animate()
+                .scale(duration: 500.ms, curve: Curves.elasticOut),
+            const SizedBox(height: 8),
+            Text(
+              achievements.length == 1 ? 'Achievement Unlocked!' : 'Achievements Unlocked!',
+              style: AppTextStyles.headline3.copyWith(color: AppColors.accent),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ...achievements.asMap().entries.map((entry) {
+              final index = entry.key;
+              final achievement = entry.value;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.success.withAlpha(40),
+                      AppColors.success.withAlpha(20),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.success.withAlpha(60)),
+                ),
+                child: Row(
+                  children: [
+                    Text(achievement.icon, style: const TextStyle(fontSize: 32)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            achievement.title,
+                            style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            achievement.description,
+                            style: AppTextStyles.caption,
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: achievement.rewards.map((r) => Padding(
+                              padding: const EdgeInsets.only(right: 8),
+                              child: Text(
+                                r.displayText,
+                                style: AppTextStyles.caption.copyWith(
+                                  color: AppColors.accent,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            )).toList(),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate(delay: Duration(milliseconds: 100 * index))
+                  .fadeIn()
+                  .slideX(begin: 0.2);
+            }),
+            const SizedBox(height: 8),
+            Text(
+              'Go to Achievements to claim rewards!',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onDismiss();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.success,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            ),
+            child: const Text('Awesome!'),
+          ),
+        ],
+      ),
+    );
+  }
+  
+  void _showThemeUnlockAvailableDialog(List<String> themeIds, VoidCallback onDismiss) {
+    final themes = themeIds
+        .map((id) => LevelGeneratorService.getThemeById(id))
+        .toList();
+    
+    _audioService.playSuccess();
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Column(
+          children: [
+            const Text('🎨', style: TextStyle(fontSize: 48))
+                .animate()
+                .scale(duration: 500.ms, curve: Curves.elasticOut)
+                .then()
+                .shake(duration: 400.ms),
+            const SizedBox(height: 8),
+            Text(
+              themes.length == 1 ? 'New Theme Available!' : 'New Themes Available!',
+              style: AppTextStyles.headline3.copyWith(color: AppColors.primary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'You\'ve unlocked access to ${themes.length == 1 ? 'a new theme' : 'new themes'}!',
+              style: AppTextStyles.body2.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ...themes.asMap().entries.map((entry) {
+              final index = entry.key;
+              final theme = entry.value;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      AppColors.primary.withAlpha(40),
+                      AppColors.secondary.withAlpha(30),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.primary.withAlpha(60)),
+                ),
+                child: Row(
+                  children: [
+                    Text(theme.icon, style: const TextStyle(fontSize: 36)),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            theme.name,
+                            style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            theme.symbols.take(6).join(' '),
+                            style: const TextStyle(fontSize: 16),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${theme.cost} 💰 to unlock',
+                            style: AppTextStyles.caption.copyWith(color: AppColors.coinColor),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ).animate(delay: Duration(milliseconds: 150 * index))
+                  .fadeIn()
+                  .scale(begin: const Offset(0.9, 0.9));
+            }),
+            const SizedBox(height: 8),
+            Text(
+              'Visit the home screen to unlock!',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              onDismiss();
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+            ),
+            child: const Text('Got it!'),
+          ),
+        ],
       ),
     );
   }
@@ -310,10 +742,17 @@ class _GameScreenState extends State<GameScreen> {
                       return Column(
                         children: [
                           // Game Header
-                          _GameHeader(
-                            level: _currentLevel,
-                            onPause: () => _gameCubit.pauseGame(),
-                            onHome: () => Navigator.pop(context),
+                          BlocBuilder<GameCubit, GameState>(
+                            buildWhen: (prev, curr) => prev.levelConfig != curr.levelConfig,
+                            builder: (context, gameState) {
+                              return _GameHeader(
+                                level: _currentLevel,
+                                specialType: gameState.levelConfig?.specialType,
+                                specialEmoji: gameState.levelConfig?.specialLevelEmoji,
+                                onPause: _showPauseDialog,
+                                onHome: () => Navigator.pop(context),
+                              );
+                            },
                           ),
 
                           // Game Stats
@@ -405,13 +844,42 @@ class _GameScreenState extends State<GameScreen> {
 
 class _GameHeader extends StatelessWidget {
   final int level;
+  final SpecialLevelType? specialType;
+  final String? specialEmoji;
   final VoidCallback onPause;
   final VoidCallback onHome;
 
-  const _GameHeader({required this.level, required this.onPause, required this.onHome});
+  const _GameHeader({
+    required this.level,
+    this.specialType,
+    this.specialEmoji,
+    required this.onPause,
+    required this.onHome,
+  });
+
+  Color _getSpecialColor() {
+    if (specialType == null) return AppColors.primary;
+    switch (specialType!) {
+      case SpecialLevelType.bossLevel:
+        return const Color(0xFFFF5722);
+      case SpecialLevelType.bonusRound:
+        return const Color(0xFF4CAF50);
+      case SpecialLevelType.speedChallenge:
+        return const Color(0xFFFFEB3B);
+      case SpecialLevelType.memoryMaster:
+        return const Color(0xFF9C27B0);
+      case SpecialLevelType.mysteryLevel:
+        return const Color(0xFF607D8B);
+      case SpecialLevelType.dailyChallenge:
+        return const Color(0xFF2196F3);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final isSpecial = specialType != null;
+    final specialColor = _getSpecialColor();
+    
     return BlocBuilder<GameCubit, GameState>(
       builder: (context, state) {
         return Container(
@@ -426,9 +894,44 @@ class _GameHeader extends StatelessWidget {
               Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text('Level $level', style: AppTextStyles.headline3),
+                  // Special level indicator
+                  if (isSpecial) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [specialColor, specialColor.withAlpha(180)],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: specialColor.withAlpha(100),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (specialEmoji != null)
+                            Text(specialEmoji!, style: const TextStyle(fontSize: 14)),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Level $level',
+                            style: AppTextStyles.body2.copyWith(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else
+                    Text('Level $level', style: AppTextStyles.headline3),
                   if (state.isFreezeActive)
                     Container(
+                      margin: const EdgeInsets.only(top: 4),
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
                         color: AppColors.secondary.withAlpha(51),
@@ -447,13 +950,12 @@ class _GameHeader extends StatelessWidget {
                 ],
               ),
               IconButton(
-                icon: Icon(
-                  state.isPaused ? Icons.play_arrow : Icons.pause,
+                icon: const Icon(
+                  Icons.pause_circle_outline,
                   color: Colors.white,
+                  size: 28,
                 ),
-                onPressed: state.isPaused
-                    ? () => context.read<GameCubit>().resumeGame()
-                    : onPause,
+                onPressed: state.isPaused ? null : onPause,
               ),
             ],
           ),
