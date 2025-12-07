@@ -25,10 +25,16 @@ class _MenuScreenState extends State<MenuScreen> {
     super.initState();
     _audioService = AudioService.instance;
     
-    // Ensure music is playing when entering menu
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Ensure music is playing when entering menu (home screen)
+    _ensureMusicPlaying();
+  }
+  
+  void _ensureMusicPlaying() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      // Always try to start music when entering menu screen
+      // AudioService will handle the checks internally
       if (!_audioService.isMusicPlaying) {
-        _audioService.startMusic();
+        await _audioService.startMusic();
       }
     });
   }

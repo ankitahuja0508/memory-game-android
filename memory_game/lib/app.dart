@@ -13,6 +13,7 @@ import 'presentation/screens/shop/shop_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/achievements/achievements_screen.dart';
 import 'presentation/screens/daily_rewards/daily_rewards_screen.dart';
+import 'presentation/screens/welcome/welcome_screen.dart';
 
 class MemoryGameApp extends StatefulWidget {
   const MemoryGameApp({super.key});
@@ -109,6 +110,8 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
             switch (settings.name) {
               case '/':
                 return MaterialPageRoute(builder: (_) => const SplashScreen());
+              case '/welcome':
+                return MaterialPageRoute(builder: (_) => const WelcomeScreen());
               case '/menu':
                 return MaterialPageRoute(builder: (_) => const MenuScreen());
               case '/levels':

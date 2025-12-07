@@ -50,7 +50,7 @@ class AudioService {
       // Create music player
       _musicPlayer = AudioPlayer();
       await _musicPlayer!.setReleaseMode(ReleaseMode.loop);
-      await _musicPlayer!.setVolume(0.35);
+      await _musicPlayer!.setVolume(0.55);
       
       // Check available audio files
       final audioFiles = [
@@ -139,7 +139,7 @@ class AudioService {
     try {
       debugPrint('[Audio] Starting music...');
       await _musicPlayer!.stop();
-      await _musicPlayer!.setVolume(0.35);
+      await _musicPlayer!.setVolume(0.55);
       await _musicPlayer!.setReleaseMode(ReleaseMode.loop);
       await _musicPlayer!.play(AssetSource('audio/background_music.mp3'));
       _isMusicPlaying = true;

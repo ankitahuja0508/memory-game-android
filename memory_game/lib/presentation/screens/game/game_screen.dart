@@ -13,7 +13,6 @@ import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
 import '../../widgets/common/animated_counter.dart';
-import '../../widgets/common/tutorial_overlay.dart';
 import '../../widgets/cards/game_board.dart';
 import '../../widgets/cards/power_up_bar.dart';
 import '../result/result_screen.dart';
@@ -31,7 +30,6 @@ class _GameScreenState extends State<GameScreen> {
   late GameCubit _gameCubit;
   late ConfettiController _confettiController;
   late AudioService _audioService;
-  bool _showTutorial = false;
   int _currentLevel = 1;
 
   @override
@@ -53,26 +51,8 @@ class _GameScreenState extends State<GameScreen> {
 
     final showPreview = playerState.settings.showPreview;
     
-    if (widget.level == 1 && !playerState.settings.tutorialCompleted) {
-      _showTutorial = true;
-    }
-    
+    // Start the level immediately - tutorial is shown separately on welcome screen
     _gameCubit.startLevel(_currentLevel, themeId: playerState.player.equippedTheme, showPreview: showPreview);
-    
-    if (_showTutorial) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        _gameCubit.pauseGame();
-      });
-    }
-  }
-
-  void _onTutorialComplete() {
-    final playerCubit = context.read<PlayerCubit>();
-    playerCubit.updateSettings(
-      playerCubit.state.settings.copyWith(tutorialCompleted: true),
-    );
-    setState(() => _showTutorial = false);
-    _gameCubit.resumeGame();
   }
 
   @override
@@ -413,12 +393,6 @@ class _GameScreenState extends State<GameScreen> {
                       ],
                     ),
                   ),
-
-                  // Tutorial
-                  if (_showTutorial)
-                    Positioned.fill(
-                      child: TutorialOverlay(onComplete: _onTutorialComplete),
-                    ),
                 ],
               ),
             ),

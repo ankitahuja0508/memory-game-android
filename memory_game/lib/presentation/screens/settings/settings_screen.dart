@@ -3,12 +3,29 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/settings_model.dart';
+import '../../../domain/services/audio_service.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
+import '../../widgets/common/tutorial_overlay.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _showTutorial = false;
+
+  void _showTutorialOverlay() {
+    setState(() => _showTutorial = true);
+  }
+
+  void _hideTutorialOverlay() {
+    setState(() => _showTutorial = false);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -25,86 +42,111 @@ class SettingsScreen extends StatelessWidget {
           title: Text('Settings', style: AppTextStyles.headline3),
           centerTitle: true,
         ),
-        body: BlocBuilder<PlayerCubit, PlayerState>(
-          builder: (context, state) {
-            return ListView(
-              padding: const EdgeInsets.all(16),
-              children: [
-                _SettingsSection(
-                  title: 'Game Settings',
+        body: Stack(
+          children: [
+            BlocBuilder<PlayerCubit, PlayerState>(
+              builder: (context, state) {
+                return ListView(
+                  padding: const EdgeInsets.all(16),
                   children: [
-                    _ToggleTile(
-                      icon: Icons.visibility,
-                      title: 'Show Preview',
-                      subtitle: 'Show cards at start of level',
-                      value: state.settings.showPreview,
-                      onChanged: (value) => _updateSettings(
-                        context,
-                        state.settings.copyWith(showPreview: value),
-                      ),
+                    _SettingsSection(
+                      title: 'Game Settings',
+                      children: [
+                        _ToggleTile(
+                          icon: Icons.visibility,
+                          title: 'Show Preview',
+                          subtitle: 'Show cards at start of level',
+                          value: state.settings.showPreview,
+                          onChanged: (value) => _updateSettings(
+                            context,
+                            state.settings.copyWith(showPreview: value),
+                          ),
+                        ),
+                        _ToggleTile(
+                          icon: Icons.volume_up,
+                          title: 'Sound Effects',
+                          subtitle: 'Play sound effects',
+                          value: state.settings.soundEnabled,
+                          onChanged: (value) => _updateSettings(
+                            context,
+                            state.settings.copyWith(soundEnabled: value),
+                          ),
+                        ),
+                        _ToggleTile(
+                          icon: Icons.music_note,
+                          title: 'Music',
+                          subtitle: 'Play background music',
+                          value: state.settings.musicEnabled,
+                          onChanged: (value) => _updateSettings(
+                            context,
+                            state.settings.copyWith(musicEnabled: value),
+                          ),
+                        ),
+                        _ToggleTile(
+                          icon: Icons.vibration,
+                          title: 'Vibration',
+                          subtitle: 'Haptic feedback',
+                          value: state.settings.vibrationEnabled,
+                          onChanged: (value) => _updateSettings(
+                            context,
+                            state.settings.copyWith(vibrationEnabled: value),
+                          ),
+                        ),
+                      ],
                     ),
-                    _ToggleTile(
-                      icon: Icons.volume_up,
-                      title: 'Sound Effects',
-                      subtitle: 'Play sound effects',
-                      value: state.settings.soundEnabled,
-                      onChanged: (value) => _updateSettings(
-                        context,
-                        state.settings.copyWith(soundEnabled: value),
-                      ),
+                    const SizedBox(height: 24),
+                    _SettingsSection(
+                      title: 'Help',
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.help_outline, color: AppColors.primary),
+                          title: Text('View Tutorial', style: AppTextStyles.body1),
+                          subtitle: Text('Learn how to play', style: AppTextStyles.caption),
+                          trailing: const Icon(Icons.arrow_forward_ios, size: 16, color: AppColors.textSecondary),
+                          onTap: () {
+                            AudioService.instance.playButton();
+                            _showTutorialOverlay();
+                          },
+                        ),
+                      ],
                     ),
-                    _ToggleTile(
-                      icon: Icons.music_note,
-                      title: 'Music',
-                      subtitle: 'Play background music',
-                      value: state.settings.musicEnabled,
-                      onChanged: (value) => _updateSettings(
-                        context,
-                        state.settings.copyWith(musicEnabled: value),
-                      ),
+                    const SizedBox(height: 24),
+                    _SettingsSection(
+                      title: 'Statistics',
+                      children: [
+                        _StatTile(icon: '🎮', title: 'Games Played', value: state.player.totalGamesPlayed.toString()),
+                        _StatTile(icon: '⭐', title: 'Total Stars', value: state.totalStars.toString()),
+                        _StatTile(icon: '🏆', title: 'Perfect Games', value: state.player.perfectGames.toString()),
+                        _StatTile(icon: '🔥', title: 'Longest Streak', value: state.player.longestStreak.toString()),
+                        _StatTile(icon: '✅', title: 'Levels Completed', value: state.completedLevels.toString()),
+                      ],
                     ),
-                    _ToggleTile(
-                      icon: Icons.vibration,
-                      title: 'Vibration',
-                      subtitle: 'Haptic feedback',
-                      value: state.settings.vibrationEnabled,
-                      onChanged: (value) => _updateSettings(
-                        context,
-                        state.settings.copyWith(vibrationEnabled: value),
-                      ),
+                    const SizedBox(height: 24),
+                    _SettingsSection(
+                      title: 'Danger Zone',
+                      children: [
+                        ListTile(
+                          leading: const Icon(Icons.delete_forever, color: AppColors.error),
+                          title: const Text('Reset Progress', style: TextStyle(color: AppColors.error)),
+                          subtitle: const Text('Delete all game data'),
+                          onTap: () => _showResetDialog(context),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    Center(
+                      child: Text('Version 1.0.0', style: AppTextStyles.caption),
                     ),
                   ],
-                ),
-                const SizedBox(height: 24),
-                _SettingsSection(
-                  title: 'Statistics',
-                  children: [
-                    _StatTile(icon: '🎮', title: 'Games Played', value: state.player.totalGamesPlayed.toString()),
-                    _StatTile(icon: '⭐', title: 'Total Stars', value: state.totalStars.toString()),
-                    _StatTile(icon: '🏆', title: 'Perfect Games', value: state.player.perfectGames.toString()),
-                    _StatTile(icon: '🔥', title: 'Longest Streak', value: state.player.longestStreak.toString()),
-                    _StatTile(icon: '✅', title: 'Levels Completed', value: state.completedLevels.toString()),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                _SettingsSection(
-                  title: 'Danger Zone',
-                  children: [
-                    ListTile(
-                      leading: const Icon(Icons.delete_forever, color: AppColors.error),
-                      title: const Text('Reset Progress', style: TextStyle(color: AppColors.error)),
-                      subtitle: const Text('Delete all game data'),
-                      onTap: () => _showResetDialog(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 24),
-                Center(
-                  child: Text('Version 1.0.0', style: AppTextStyles.caption),
-                ),
-              ],
-            );
-          },
+                );
+              },
+            ),
+            // Tutorial overlay
+            if (_showTutorial)
+              Positioned.fill(
+                child: TutorialOverlay(onComplete: _hideTutorialOverlay),
+              ),
+          ],
         ),
       ),
     );

@@ -39,7 +39,12 @@ class _SplashScreenState extends State<SplashScreen> {
     await Future.delayed(const Duration(milliseconds: 1500));
     
     if (mounted) {
-      Navigator.of(context).pushReplacementNamed('/menu');
+      // Navigate to welcome screen for first-time users, menu for returning users
+      if (!playerState.settings.tutorialCompleted) {
+        Navigator.of(context).pushReplacementNamed('/welcome');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/menu');
+      }
     }
   }
 
