@@ -14,10 +14,15 @@ class AdConfig {
   // ============================================
   
   /// Returns true if running in release/production mode
-  static bool get isProduction => kReleaseMode;
+  /// CRITICAL: kReleaseMode is the most reliable indicator
+  static bool get isProduction {
+    // kReleaseMode is a compile-time constant
+    // It's true ONLY when built with --release flag
+    return kReleaseMode;
+  }
   
   /// Returns true if running in debug/development mode
-  static bool get isDebug => !kReleaseMode;
+  static bool get isDebug => kDebugMode;
 
   // ============================================
   // GOOGLE'S OFFICIAL TEST AD IDs
@@ -217,20 +222,33 @@ class AdConfig {
     debugPrint('==========================================');
     debugPrint('📺 AD CONFIGURATION');
     debugPrint('==========================================');
-    debugPrint('🔧 Mode: ${isProduction ? "PRODUCTION" : "DEBUG/TEST"}');
+    debugPrint('🏗️ kReleaseMode: $kReleaseMode');
+    debugPrint('🔧 kDebugMode: $kDebugMode');
+    debugPrint('🎯 isProduction: $isProduction');
+    debugPrint('🔧 Mode: ${isProduction ? "PRODUCTION (Real Ads)" : "DEBUG/TEST (Test Ads)"}');
     debugPrint('📱 Platform: ${Platform.isAndroid ? "Android" : "iOS"}');
     debugPrint('');
     debugPrint('🆔 App ID: $appId');
+    
+    // Show if using test or prod
+    final isTestAppId = appId.contains('3940256099942544');
+    debugPrint('   ⚠️ Type: ${isTestAppId ? "TEST APP ID" : "PRODUCTION APP ID"}');
     debugPrint('');
     debugPrint('🎬 Rewarded Ads:');
     debugPrint('   Shop Coins: $rewardedShopAdUnitId');
+    final isTestRewarded = rewardedShopAdUnitId.contains('3940256099942544');
+    debugPrint('   ⚠️ Type: ${isTestRewarded ? "TEST AD" : "PRODUCTION AD"}');
     debugPrint('   Extra Time: $rewardedExtraTimeAdUnitId');
     debugPrint('   Daily Bonus: $rewardedDailyBonusAdUnitId');
     debugPrint('');
     debugPrint('📺 Interstitial: $interstitialAdUnitId');
+    final isTestInterstitial = interstitialAdUnitId.contains('3940256099942544');
+    debugPrint('   ⚠️ Type: ${isTestInterstitial ? "TEST AD" : "PRODUCTION AD"}');
     debugPrint('');
     debugPrint('🏷️ Banner Ads:');
     debugPrint('   Home: $bannerHomeAdUnitId');
+    final isTestBanner = bannerHomeAdUnitId.contains('3940256099942544');
+    debugPrint('   ⚠️ Type: ${isTestBanner ? "TEST AD" : "PRODUCTION AD"}');
     debugPrint('   Levels: $bannerLevelsAdUnitId');
     debugPrint('   Shop: $bannerShopAdUnitId');
     debugPrint('   Themes: $bannerThemesAdUnitId');

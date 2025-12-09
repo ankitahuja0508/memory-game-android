@@ -66,6 +66,8 @@ class AdService {
       debugPrint('==========================================');
       debugPrint('✅ ADMOB INITIALIZED SUCCESSFULLY');
       debugPrint('📱 Adapter status: ${initCompleter.adapterStatuses}');
+      debugPrint('🏷️ Build Mode: ${AdConfig.isProduction ? "PRODUCTION (Real Ads)" : "DEBUG (Test Ads)"}');
+      debugPrint('🔑 Using App ID: ${AdConfig.appId.substring(0, 30)}...');
       debugPrint('==========================================');
       
       // Print full ad configuration

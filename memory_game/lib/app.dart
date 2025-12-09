@@ -16,6 +16,7 @@ import 'presentation/screens/achievements/achievements_screen.dart';
 import 'presentation/screens/daily_rewards/daily_rewards_screen.dart';
 import 'presentation/screens/welcome/welcome_screen.dart';
 import 'presentation/screens/leaderboard/leaderboard_screen.dart';
+import 'domain/services/app_update_service.dart';
 
 /// Route observer to ensure music plays across screen navigation
 class MusicRouteObserver extends RouteObserver<PageRoute<dynamic>> {
@@ -112,10 +113,69 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
     await NotificationService.instance.initialize();
     await NotificationService.instance.onAppOpened();
     
+    // Initialize App Update Service
+    await AppUpdateService.instance.initialize();
+    
     // Create route observer for music management
     _musicRouteObserver = MusicRouteObserver(_audioService);
     
     setState(() => _isInitialized = true);
+    
+    // Check for updates after initialization (non-blocking)
+    _checkForUpdates();
+  }
+
+  Future<void> _checkForUpdates() async {
+    // Wait a bit to let the app fully load
+    await Future.delayed(const Duration(seconds: 2));
+    
+    final updateInfo = await AppUpdateService.instance.checkForUpdate();
+    
+    if (updateInfo != null && mounted) {
+      // Show update dialog
+      showDialog(
+        context: context,
+        barrierDismissible: !updateInfo.isRequired,
+        builder: (context) => AlertDialog(
+          title: const Text('🚀 Update Available!'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('New version ${updateInfo.latestVersion} is available'),
+              const SizedBox(height: 8),
+              Text(updateInfo.updateMessage),
+              if (updateInfo.isRequired) ...[
+                const SizedBox(height: 8),
+                const Text(
+                  '⚠️ This update is required to continue playing',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            if (!updateInfo.isRequired)
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  AppUpdateService.instance.dismissUpdate(updateInfo.latestVersion);
+                },
+                child: const Text('Later'),
+              ),
+            ElevatedButton(
+              onPressed: () {
+                if (!updateInfo.isRequired) {
+                  Navigator.of(context).pop();
+                }
+                AppUpdateService.instance.openStorePage();
+              },
+              child: const Text('Update Now'),
+            ),
+          ],
+        ),
+      );
+    }
   }
 
   @override

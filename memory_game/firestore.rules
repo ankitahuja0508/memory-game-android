@@ -79,6 +79,8 @@ service cloud.firestore {
     // ============================================
     // LEADERBOARD COLLECTION
     // Store high scores for each level
+    // Note: Rate limiting requires a separate rateLimit collection
+    // Client must manage: rateLimit/{userId} = { count: number, lastSubmission: timestamp }
     // ============================================
     match /leaderboard/{scoreId} {
       // Anyone can read leaderboard (public)
@@ -104,11 +106,41 @@ service cloud.firestore {
         && isValidTimestamp(request.resource.data.timestamp)
         && request.resource.data.timestamp > request.time - duration.value(1, 'm')
         && request.resource.data.timestamp <= request.time + duration.value(1, 'm')
-        // Rate limit: max 100 scores per user total (prevent spam)
-        && !exists(/databases/$(database)/documents/leaderboard/$(request.auth.uid + '_100'));
+        // Rate limit: max 10 submissions per hour per user (prevent spam)
+        && (
+          !exists(/databases/$(database)/documents/rateLimit/$(request.auth.uid))
+          || get(/databases/$(database)/documents/rateLimit/$(request.auth.uid)).data.lastSubmission < request.time - duration.value(1, 'h')
+          || get(/databases/$(database)/documents/rateLimit/$(request.auth.uid)).data.count < 10
+        );
       
       // Leaderboard entries cannot be updated or deleted (immutable)
       allow update: if false;
+      allow delete: if false;
+    }
+    
+    // ============================================
+    // RATE LIMIT COLLECTION
+    // Track submission rates to prevent spam
+    // ============================================
+    match /rateLimit/{userId} {
+      // Users can only read their own rate limit data
+      allow read: if isOwner(userId);
+      
+      // Users can create/update their own rate limit tracking
+      allow write: if isOwner(userId)
+        && hasRequiredFields(['count', 'lastSubmission'])
+        && request.resource.data.count is int
+        && request.resource.data.count >= 0
+        && request.resource.data.count <= 10  // Max 10 submissions per window
+        && isValidTimestamp(request.resource.data.lastSubmission)
+        // Reset count to 1 if more than 1 hour has passed
+        && (
+          !exists(/databases/$(database)/documents/rateLimit/$(userId))
+          || request.resource.data.lastSubmission > resource.data.lastSubmission
+          || (request.resource.data.count == 1 && resource.data.lastSubmission < request.time - duration.value(1, 'h'))
+          || (request.resource.data.count == resource.data.count + 1 && resource.data.lastSubmission >= request.time - duration.value(1, 'h'))
+        );
+      
       allow delete: if false;
     }
     

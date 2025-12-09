@@ -144,21 +144,65 @@ class FirebaseService {
     }
   }
 
-  /// Submit score to leaderboard
+  /// Submit score to leaderboard with rate limiting
   Future<void> submitScore(int level, int score, Duration time) async {
     if (!isSignedIn) return;
 
+    final userId = currentUser!.uid;
+    int submissionCount = 1;
+
     try {
-      await firestore.collection('leaderboard').add({
-        'userId': currentUser!.uid,
-        'level': level,
-        'score': score,
-        'timeSeconds': time.inSeconds,
-        'timestamp': FieldValue.serverTimestamp(),
+      // Use a transaction to handle rate limiting and score submission atomically
+      await firestore.runTransaction((transaction) async {
+        // Check and update rate limit
+        final rateLimitRef = firestore.collection('rateLimit').doc(userId);
+        final rateLimitDoc = await transaction.get(rateLimitRef);
+        
+        final now = Timestamp.now();
+        
+        if (rateLimitDoc.exists) {
+          final data = rateLimitDoc.data()!;
+          final lastSubmission = data['lastSubmission'] as Timestamp;
+          final currentCount = data['count'] as int;
+          
+          // Check if more than 1 hour has passed since last submission window started
+          final hourAgo = DateTime.now().subtract(const Duration(hours: 1));
+          if (lastSubmission.toDate().isBefore(hourAgo)) {
+            // Reset count for new window
+            submissionCount = 1;
+          } else if (currentCount < 10) {
+            // Still within limit, increment count
+            submissionCount = currentCount + 1;
+          } else {
+            // Rate limit exceeded
+            throw Exception('Rate limit exceeded. You can submit up to 10 scores per hour.');
+          }
+        }
+        
+        // Update rate limit document
+        transaction.set(rateLimitRef, {
+          'count': submissionCount,
+          'lastSubmission': now,
+        });
+        
+        // Submit the score
+        final scoreRef = firestore.collection('leaderboard').doc();
+        transaction.set(scoreRef, {
+          'userId': userId,
+          'level': level,
+          'score': score,
+          'timeSeconds': time.inSeconds,
+          'timestamp': now,
+        });
       });
-      debugPrint('✅ Score submitted to leaderboard');
+      
+      debugPrint('✅ Score submitted to leaderboard (submission $submissionCount/10 this hour)');
     } catch (e) {
       debugPrint('❌ Failed to submit score: $e');
+      if (e.toString().contains('Rate limit exceeded')) {
+        // Re-throw rate limit errors so UI can handle them
+        rethrow;
+      }
       crashlytics.recordError(e, StackTrace.current);
     }
   }

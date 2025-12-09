@@ -429,11 +429,16 @@ class GameCubit extends Cubit<GameState> {
     _hapticService.medium();
 
     debugPrint('↩️ Undo activated! Reversing last mismatch');
+    debugPrint('   Current moves: ${state.moves}');
+    debugPrint('   Current mistakes: ${state.mistakes}');
 
     // Reduce moves by 1 (the mismatch move is undone)
     // Reduce mistakes by 1 (only if shield didn't absorb it)
     final newMoves = state.moves > 0 ? state.moves - 1 : 0;
     final newMistakes = state.mistakes > 0 ? state.mistakes - 1 : state.mistakes;
+
+    debugPrint('   New moves: $newMoves');
+    debugPrint('   New mistakes: $newMistakes');
 
     emit(state.copyWith(
       moves: newMoves,
@@ -441,6 +446,8 @@ class GameCubit extends Cubit<GameState> {
       canUndo: false, // Can only undo once
       lastMismatchIndices: null,
     ));
+    
+    debugPrint('✅ Undo complete! Moves: ${state.moves}, Mistakes: ${state.mistakes}');
   }
 
   /// DOUBLE COINS: Double the coin reward at end of level

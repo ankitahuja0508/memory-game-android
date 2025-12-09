@@ -17,6 +17,10 @@ class RemoteConfigService {
   static const String _maintenanceMode = 'maintenance_mode';
   static const String _maintenanceMessage = 'maintenance_message';
   static const String _minAppVersion = 'min_app_version';
+  static const String _latestAppVersion = 'latest_app_version';
+  static const String _latestBuildNumber = 'latest_build_number';
+  static const String _updateRequired = 'update_required';
+  static const String _updateMessage = 'update_message';
   static const String _maxRewardedAdsPerDay = 'max_rewarded_ads_per_day';
   static const String _dailyRewardMultiplier = 'daily_reward_multiplier';
 
@@ -27,13 +31,17 @@ class RemoteConfigService {
 
       // Set default values
       await _remoteConfig!.setDefaults({
-        _leaderboardEnabled: true,
+        _leaderboardEnabled: false,
         _shareEnabled: true,
         _rateAppEnabled: true,
         _notificationsEnabled: true,
         _maintenanceMode: false,
         _maintenanceMessage: 'The game is under maintenance. Please try again later.',
         _minAppVersion: '1.0.0',
+        _latestAppVersion: '1.0.0',
+        _latestBuildNumber: 1,
+        _updateRequired: false,
+        _updateMessage: 'A new version is available with exciting new features!',
         _maxRewardedAdsPerDay: 10,
         _dailyRewardMultiplier: 1.0,
       });
@@ -131,5 +139,31 @@ class RemoteConfigService {
   double get dailyRewardMultiplier {
     if (!_isInitialized || _remoteConfig == null) return 1.0;
     return _remoteConfig!.getDouble(_dailyRewardMultiplier);
+  }
+
+  /// Get latest app version available
+  String get latestVersion {
+    if (!_isInitialized || _remoteConfig == null) return '';
+    return _remoteConfig!.getString(_latestAppVersion);
+  }
+
+  /// Get latest build number available
+  int get latestBuildNumber {
+    if (!_isInitialized || _remoteConfig == null) return 1;
+    return _remoteConfig!.getInt(_latestBuildNumber);
+  }
+
+  /// Check if update is required (force update)
+  bool get updateRequired {
+    if (!_isInitialized || _remoteConfig == null) return false;
+    return _remoteConfig!.getBool(_updateRequired);
+  }
+
+  /// Get update message to show to users
+  String get updateMessage {
+    if (!_isInitialized || _remoteConfig == null) {
+      return 'A new version is available with exciting new features!';
+    }
+    return _remoteConfig!.getString(_updateMessage);
   }
 }

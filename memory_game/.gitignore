@@ -43,3 +43,15 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Keystore and signing files
+/android/key.properties
+/android/app/*.keystore
+*.keystore
+*.jks
+
+# Firebase configuration files (should be added manually per environment)
+# Uncomment these lines to exclude Firebase config files from version control
+# /android/app/google-services.json
+# /ios/Runner/GoogleService-Info.plist
+# /macos/Runner/GoogleService-Info.plist
