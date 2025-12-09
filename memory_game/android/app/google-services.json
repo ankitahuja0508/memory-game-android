@@ -7,9 +7,9 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:452690639330:android:41fb352d5ccdc9406a21bb",
+        "mobilesdk_app_id": "1:452690639330:android:b23ff36694482fc96a21bb",
         "android_client_info": {
-          "package_name": "com.aexyn.memorymatch.memory_game"
+          "package_name": "com.aexyn.memorymatch.memorygame"
         }
       },
       "oauth_client": [],
@@ -27,4 +27,3 @@
   ],
   "configuration_version": "1"
 }
-

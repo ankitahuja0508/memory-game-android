@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../../../config/ad_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/level_model.dart';
 import '../../../domain/services/audio_service.dart';
+import '../../../domain/services/ad_service.dart';
 import '../../../domain/services/level_generator_service.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
@@ -21,12 +24,43 @@ class LevelSelectScreen extends StatefulWidget {
 class _LevelSelectScreenState extends State<LevelSelectScreen> {
   final _audioService = AudioService.instance;
   final _levelGenerator = LevelGeneratorService();
+  BannerAd? _bannerAd;
+  bool _adLoadAttempted = false;
 
   @override
   void initState() {
     super.initState();
     // Ensure music keeps playing when entering level select
     _ensureMusicPlaying();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Load banner ad after context is available (only once)
+    if (!_adLoadAttempted) {
+      _adLoadAttempted = true;
+      _loadBannerAd();
+    }
+  }
+
+  void _loadBannerAd() async {
+    try {
+      final width = MediaQuery.of(context).size.width;
+      final ad = await AdService.instance.createAdaptiveBannerAd(width, adUnitId: AdConfig.bannerLevelsAdUnitId).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => null,
+      );
+      if (mounted) setState(() => _bannerAd = ad);
+    } catch (e) {
+      debugPrint('❌ Error loading banner ad: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
   }
 
   void _ensureMusicPlaying() {
@@ -92,21 +126,6 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                       ),
                       child: Row(
                         children: [
-                          Container(
-                            width: 56,
-                            height: 56,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(40),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Text('▶️', style: TextStyle(fontSize: 24)),
-                              ],
-                            ),
-                          ),
-                          const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -119,6 +138,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                                     color: Colors.white70,
                                   ),
                                 ),
+                                const SizedBox(height: 4),
                                 Text(
                                   'Level $nextLevel',
                                   style: AppTextStyles.headline2.copyWith(
@@ -139,20 +159,13 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
                                       ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                 ],
                               ],
                             ),
-                          ),
-                          // Play icon instead of arrow
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withAlpha(40),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.play_arrow_rounded, color: Colors.white, size: 24),
                           ),
                         ],
                       ),
@@ -186,6 +199,7 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                     itemCount: displayLevels,
                     itemBuilder: (context, index) {
                       final level = index + 1;
+                      
                       final progress = state.levelProgress[level];
                       final isUnlocked = level <= highestLevel;
                       final isCompleted = progress?.completed ?? false;
@@ -220,6 +234,15 @@ class _LevelSelectScreenState extends State<LevelSelectScreen> {
                     },
                   ),
                 ),
+
+                // Banner Ad at bottom
+                if (_bannerAd != null && !AdService.instance.adsRemoved)
+                  Container(
+                    alignment: Alignment.center,
+                    width: _bannerAd!.size.width.toDouble(),
+                    height: _bannerAd!.size.height.toDouble(),
+                    child: AdWidget(ad: _bannerAd!),
+                  ),
               ],
             );
           },
@@ -488,3 +511,6 @@ class _LevelTile extends StatelessWidget {
     );
   }
 }
+
+/// Native ad placeholder for level grid
+/// Shows a simple "AD" card - replace with actual native ad implementation later

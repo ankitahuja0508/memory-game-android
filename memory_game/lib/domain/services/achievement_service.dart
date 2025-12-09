@@ -7,7 +7,8 @@ class AchievementService {
     _progress = Map.from(progress);
   }
 
-  Map<String, AchievementProgress> get progress => _progress;
+  /// Returns a copy of the progress map to ensure Bloc detects state changes
+  Map<String, AchievementProgress> get progress => Map.from(_progress);
 
   List<String> checkAndUnlock({
     int? matchesMade,

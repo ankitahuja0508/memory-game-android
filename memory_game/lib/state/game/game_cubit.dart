@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/models.dart';
 import '../../domain/services/services.dart';
@@ -142,6 +143,7 @@ class GameCubit extends Cubit<GameState> {
     _audioService.playFlip();
     _hapticService.light();
 
+    // Clear canUndo when user makes a new move
     final newCards = List<CardModel>.from(state.cards);
     newCards[index] = card.copyWith(state: CardState.faceUp);
 
@@ -150,6 +152,7 @@ class GameCubit extends Cubit<GameState> {
     emit(state.copyWith(
       cards: newCards,
       selectedIndices: newSelected,
+      canUndo: false, // Any new move cancels undo ability
     ));
 
     if (newSelected.length == 2) {
@@ -196,6 +199,8 @@ class GameCubit extends Cubit<GameState> {
       matches: newMatches,
       currentStreak: newStreak,
       longestStreak: newLongest,
+      canUndo: false, // Can't undo a match
+      lastMismatchIndices: null,
     ));
 
     // Check if game complete
@@ -212,13 +217,32 @@ class GameCubit extends Cubit<GameState> {
     newCards[idx1] = newCards[idx1].copyWith(state: CardState.faceDown);
     newCards[idx2] = newCards[idx2].copyWith(state: CardState.faceDown);
 
-    emit(state.copyWith(
-      cards: newCards,
-      selectedIndices: [],
-      moves: state.moves + 1,
-      mistakes: state.mistakes + 1,
-      currentStreak: 0,
-    ));
+    // Check if shield is active
+    if (state.hasShieldProtection) {
+      // Shield absorbs the mistake
+      debugPrint('🛡️ Shield protected from mistake! Remaining: ${state.shieldCount - 1}');
+      emit(state.copyWith(
+        cards: newCards,
+        selectedIndices: [],
+        moves: state.moves + 1,
+        // Don't increment mistakes - shield absorbed it
+        currentStreak: 0, // Still breaks streak
+        shieldCount: state.shieldCount - 1, // Use one shield charge
+        canUndo: false, // No undo needed - shield absorbed the mistake
+        lastMismatchIndices: [], // Clear last mismatch since shield absorbed it
+      ));
+    } else {
+      // Normal mismatch
+      emit(state.copyWith(
+        cards: newCards,
+        selectedIndices: [],
+        moves: state.moves + 1,
+        mistakes: state.mistakes + 1,
+        currentStreak: 0,
+        canUndo: true, // Enable undo after mismatch
+        lastMismatchIndices: [idx1, idx2],
+      ));
+    }
   }
 
   void _completeGame() {
@@ -228,7 +252,11 @@ class GameCubit extends Cubit<GameState> {
     // Note: Success sound is played in game_screen.dart when showing the result dialog
   }
 
-  // Power-ups
+  // ============================================
+  // POWER-UPS
+  // ============================================
+
+  /// PEEK: Show all cards for 3 seconds
   void activatePeek() {
     if (state.phase != GamePhase.playing) return;
     
@@ -242,7 +270,7 @@ class GameCubit extends Cubit<GameState> {
       return c;
     }).toList();
 
-    emit(state.copyWith(cards: peekCards, isPeekActive: true));
+    emit(state.copyWith(cards: peekCards, isPeekActive: true, canUndo: false));
 
     Timer(const Duration(seconds: 3), () {
       if (!state.isPeekActive) return;
@@ -258,6 +286,7 @@ class GameCubit extends Cubit<GameState> {
     });
   }
 
+  /// FREEZE: Pause timer for 10 seconds
   void activateFreeze() {
     if (state.phase != GamePhase.playing || state.isFreezeActive) return;
 
@@ -286,6 +315,7 @@ class GameCubit extends Cubit<GameState> {
     });
   }
 
+  /// HINT: Highlight one matching pair for 3 seconds
   void activateHint() {
     if (state.phase != GamePhase.playing) return;
 
@@ -314,7 +344,7 @@ class GameCubit extends Cubit<GameState> {
     newCards[pairIndices[1]] = newCards[pairIndices[1]].copyWith(state: CardState.hinted);
 
     // Set hint active (pauses timer)
-    emit(state.copyWith(cards: newCards, isHintActive: true));
+    emit(state.copyWith(cards: newCards, isHintActive: true, canUndo: false));
 
     // Remove hint after 3 seconds (gives user time to tap both cards)
     Timer(const Duration(seconds: 3), () {
@@ -330,6 +360,7 @@ class GameCubit extends Cubit<GameState> {
     });
   }
 
+  /// MAGNET: Auto-match one pair instantly
   void activateMagnet() {
     if (state.phase != GamePhase.playing) return;
 
@@ -358,7 +389,7 @@ class GameCubit extends Cubit<GameState> {
     revealCards[idx1] = revealCards[idx1].copyWith(state: CardState.hinted);
     revealCards[idx2] = revealCards[idx2].copyWith(state: CardState.hinted);
 
-    emit(state.copyWith(cards: revealCards));
+    emit(state.copyWith(cards: revealCards, canUndo: false));
 
     // After a brief delay, match them
     Timer(const Duration(milliseconds: 600), () {
@@ -386,6 +417,63 @@ class GameCubit extends Cubit<GameState> {
     });
   }
 
+  /// UNDO: Undo the last wrong match (reduces moves and mistakes by 1)
+  void activateUndo() {
+    if (state.phase != GamePhase.playing) return;
+    if (!state.canUndo || state.lastMismatchIndices == null) {
+      debugPrint('↩️ Cannot undo - no recent mismatch');
+      return;
+    }
+
+    _audioService.playPowerUp();
+    _hapticService.medium();
+
+    debugPrint('↩️ Undo activated! Reversing last mismatch');
+
+    // Reduce moves by 1 (the mismatch move is undone)
+    // Reduce mistakes by 1 (only if shield didn't absorb it)
+    final newMoves = state.moves > 0 ? state.moves - 1 : 0;
+    final newMistakes = state.mistakes > 0 ? state.mistakes - 1 : state.mistakes;
+
+    emit(state.copyWith(
+      moves: newMoves,
+      mistakes: newMistakes,
+      canUndo: false, // Can only undo once
+      lastMismatchIndices: null,
+    ));
+  }
+
+  /// DOUBLE COINS: Double the coin reward at end of level
+  void activateDoubleCoins() {
+    if (state.phase != GamePhase.playing) return;
+    if (state.isDoubleCoinsActive) return; // Already active
+
+    _audioService.playPowerUp();
+    _hapticService.medium();
+
+    debugPrint('💰 Double Coins activated! Coins will be doubled at level end');
+
+    emit(state.copyWith(isDoubleCoinsActive: true, canUndo: false));
+  }
+
+  /// SHIELD: Protect from the next 3 mistakes (mistakes won't count)
+  void activateShield() {
+    if (state.phase != GamePhase.playing) return;
+
+    _audioService.playPowerUp();
+    _hapticService.medium();
+
+    // Add 3 shield charges
+    final newShieldCount = state.shieldCount + 3;
+    debugPrint('🛡️ Shield activated! Protection for $newShieldCount mistakes');
+
+    emit(state.copyWith(shieldCount: newShieldCount, canUndo: false));
+  }
+
+  // ============================================
+  // GAME CONTROLS
+  // ============================================
+
   void pauseGame() {
     if (state.phase != GamePhase.playing) return;
     _gameTimer?.cancel();
@@ -400,6 +488,17 @@ class GameCubit extends Cubit<GameState> {
 
   void restartLevel() {
     startLevel(state.level, themeId: state.levelConfig?.theme.id);
+  }
+
+  /// Add extra time (for rewarded ad)
+  void addExtraTime(int seconds) {
+    if (state.phase != GamePhase.timeout) return;
+    
+    // Resume game with extra time by going back to playing phase
+    emit(state.copyWith(phase: GamePhase.playing));
+    
+    // Restart the timer
+    _startGameTimer();
   }
 
   GameResult getResult() {
@@ -425,7 +524,13 @@ class GameCubit extends Cubit<GameState> {
     
     // Apply coin multiplier from level config (special levels give bonus coins)
     final coinMultiplier = config?.coinMultiplier ?? 1.0;
-    final coins = (baseCoins * coinMultiplier).round();
+    var coins = (baseCoins * coinMultiplier).round();
+    
+    // Apply Double Coins power-up
+    if (state.isDoubleCoinsActive) {
+      coins *= 2;
+      debugPrint('💰 Double Coins applied! $baseCoins → $coins');
+    }
 
     return GameResult(
       level: state.level,

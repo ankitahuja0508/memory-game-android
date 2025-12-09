@@ -10,10 +10,12 @@ import 'presentation/screens/menu/menu_screen.dart';
 import 'presentation/screens/level_select/level_select_screen.dart';
 import 'presentation/screens/game/game_screen.dart';
 import 'presentation/screens/shop/shop_screen.dart';
+import 'presentation/screens/themes/themes_screen.dart';
 import 'presentation/screens/settings/settings_screen.dart';
 import 'presentation/screens/achievements/achievements_screen.dart';
 import 'presentation/screens/daily_rewards/daily_rewards_screen.dart';
 import 'presentation/screens/welcome/welcome_screen.dart';
+import 'presentation/screens/leaderboard/leaderboard_screen.dart';
 
 /// Route observer to ensure music plays across screen navigation
 class MusicRouteObserver extends RouteObserver<PageRoute<dynamic>> {
@@ -90,6 +92,26 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
     _audioService = AudioService.instance;
     await _audioService.initialize();
     
+    // Sign in anonymously to Firebase (if not already signed in)
+    debugPrint('🔥 Checking Firebase authentication...');
+    final firebaseService = FirebaseService.instance;
+    if (firebaseService.currentUser == null) {
+      debugPrint('🔑 No user found, signing in anonymously...');
+      await firebaseService.signInAnonymously();
+    } else {
+      debugPrint('✅ Already signed in: ${firebaseService.currentUser?.uid}');
+    }
+    
+    // Initialize Remote Config (feature toggles)
+    await RemoteConfigService.instance.initialize();
+    
+    // Initialize Rate App Service
+    await RateAppService.instance.initialize();
+    
+    // Initialize Notification Service
+    await NotificationService.instance.initialize();
+    await NotificationService.instance.onAppOpened();
+    
     // Create route observer for music management
     _musicRouteObserver = MusicRouteObserver(_audioService);
     
@@ -153,12 +175,16 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
                 return MaterialPageRoute(builder: (_) => GameScreen(level: level));
               case '/shop':
                 return MaterialPageRoute(builder: (_) => const ShopScreen());
+              case '/themes':
+                return MaterialPageRoute(builder: (_) => const ThemesScreen());
               case '/settings':
                 return MaterialPageRoute(builder: (_) => const SettingsScreen());
               case '/achievements':
                 return MaterialPageRoute(builder: (_) => const AchievementsScreen());
               case '/daily':
                 return MaterialPageRoute(builder: (_) => const DailyRewardsScreen());
+              case '/leaderboard':
+                return MaterialPageRoute(builder: (_) => const LeaderboardScreen());
               default:
                 return MaterialPageRoute(builder: (_) => const MenuScreen());
             }

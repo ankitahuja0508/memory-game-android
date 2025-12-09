@@ -5,3 +5,8 @@ export 'haptic_service.dart';
 export 'achievement_service.dart';
 export 'daily_reward_service.dart';
 export 'firebase_service.dart';
+export 'ad_service.dart';
+export 'remote_config_service.dart';
+export 'share_service.dart';
+export 'rate_app_service.dart';
+export 'notification_service.dart';

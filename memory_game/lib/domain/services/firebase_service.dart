@@ -32,8 +32,9 @@ class FirebaseService {
       };
 
       // Enable offline persistence for Firestore
-      await firestore.enablePersistence(
-        const PersistenceSettings(synchronizeTabs: true),
+      firestore.settings = const Settings(
+        persistenceEnabled: true,
+        cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
       );
 
       debugPrint('✅ Firebase initialized successfully');
@@ -176,6 +177,50 @@ class FirebaseService {
       return query.docs.map((doc) => doc.data()).toList();
     } catch (e) {
       debugPrint('❌ Failed to load leaderboard: $e');
+      crashlytics.recordError(e, StackTrace.current);
+      return [];
+    }
+  }
+
+  /// Get global leaderboard (all-time high scores by total stars)
+  Future<List<Map<String, dynamic>>> getGlobalLeaderboard({int limit = 100}) async {
+    try {
+      final query = await firestore
+          .collection('players')
+          .orderBy('totalStars', descending: true)
+          .limit(limit)
+          .get();
+
+      return query.docs.map((doc) => {
+        ...doc.data(),
+        'userId': doc.id,
+      }).toList();
+    } catch (e) {
+      debugPrint('❌ Failed to load global leaderboard: $e');
+      crashlytics.recordError(e, StackTrace.current);
+      return [];
+    }
+  }
+
+  /// Get weekly leaderboard (scores from the past 7 days)
+  Future<List<Map<String, dynamic>>> getWeeklyLeaderboard({int limit = 100}) async {
+    try {
+      final weekAgo = DateTime.now().subtract(const Duration(days: 7));
+      
+      final query = await firestore
+          .collection('players')
+          .where('lastUpdated', isGreaterThan: Timestamp.fromDate(weekAgo))
+          .orderBy('lastUpdated', descending: true)
+          .orderBy('totalStars', descending: true)
+          .limit(limit)
+          .get();
+
+      return query.docs.map((doc) => {
+        ...doc.data(),
+        'userId': doc.id,
+      }).toList();
+    } catch (e) {
+      debugPrint('❌ Failed to load weekly leaderboard: $e');
       crashlytics.recordError(e, StackTrace.current);
       return [];
     }

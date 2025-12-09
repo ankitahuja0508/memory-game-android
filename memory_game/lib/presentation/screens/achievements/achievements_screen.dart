@@ -1,16 +1,55 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:percent_indicator/linear_percent_indicator.dart';
+import '../../../config/ad_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/achievement_model.dart';
+import '../../../domain/services/ad_service.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
 
-class AchievementsScreen extends StatelessWidget {
+class AchievementsScreen extends StatefulWidget {
   const AchievementsScreen({super.key});
+
+  @override
+  State<AchievementsScreen> createState() => _AchievementsScreenState();
+}
+
+class _AchievementsScreenState extends State<AchievementsScreen> {
+  BannerAd? _bannerAd;
+  bool _adLoadAttempted = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_adLoadAttempted) {
+      _adLoadAttempted = true;
+      _loadBannerAd();
+    }
+  }
+
+  void _loadBannerAd() async {
+    try {
+      final width = MediaQuery.of(context).size.width;
+      final ad = await AdService.instance.createAdaptiveBannerAd(width, adUnitId: AdConfig.bannerAchievementsAdUnitId).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => null,
+      );
+      if (mounted) setState(() => _bannerAd = ad);
+    } catch (e) {
+      debugPrint('❌ Error loading banner ad: $e');
+    }
+  }
+
+  @override
+  void dispose() {
+    _bannerAd?.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,6 +127,15 @@ class AchievementsScreen extends StatelessWidget {
                     },
                   ),
                 ),
+                
+                // Banner Ad at bottom
+                if (_bannerAd != null && !AdService.instance.adsRemoved)
+                  Container(
+                    alignment: Alignment.center,
+                    width: _bannerAd!.size.width.toDouble(),
+                    height: _bannerAd!.size.height.toDouble(),
+                    child: AdWidget(ad: _bannerAd!),
+                  ),
               ],
             );
           },
@@ -153,9 +201,16 @@ class _AchievementTile extends StatelessWidget {
                 Text(
                   achievement.title,
                   style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 4),
-                Text(achievement.description, style: AppTextStyles.caption),
+                Text(
+                  achievement.description,
+                  style: AppTextStyles.caption,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                ),
                 if (achievement.targetValue > 1 && !isCompleted) ...[
                   const SizedBox(height: 8),
                   LinearPercentIndicator(

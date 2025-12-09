@@ -19,8 +19,8 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
   final List<TutorialStep> _steps = [
     const TutorialStep(
       icon: '🎮',
-      title: 'Welcome to Memory Match!',
-      description: 'A fun memory game where you match pairs of cards.',
+      title: 'Welcome to Memory Match - Brain Training!',
+      description: 'A fun memory game to train your brain by matching pairs of cards.',
       illustration: '🃏🃏',
     ),
     const TutorialStep(
@@ -48,10 +48,10 @@ class _TutorialOverlayState extends State<TutorialOverlay> {
       illustration: '⭐⭐⭐',
     ),
     const TutorialStep(
-      icon: '🔮',
+      icon: '⚡',
       title: 'Use Power-ups',
-      description: 'Stuck? Use power-ups like Peek 👁️, Freeze ❄️, Hint 🔦, or Magnet 🧲 to help!',
-      illustration: '👁️❄️🔦🧲',
+      description: 'Stuck? Use power-ups like Peek 👁️, Freeze ❄️, Hint 🔦, Magnet 🧲, Shield 🛡️, Undo ↩️, and Double Coins 💰!',
+      illustration: '👁️❄️🔦🧲🛡️↩️💰',
     ),
     const TutorialStep(
       icon: '🚀',

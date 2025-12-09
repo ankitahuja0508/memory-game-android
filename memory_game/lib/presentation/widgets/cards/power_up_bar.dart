@@ -29,61 +29,66 @@ class PowerUpBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      height: 70,
       decoration: BoxDecoration(
         color: Colors.black.withAlpha(51),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
-        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Info button
-          GestureDetector(
-            onTap: () => _showPowerUpInfoDialog(context),
-            child: Container(
-              width: 32,
-              height: 32,
-              decoration: BoxDecoration(
-                color: AppColors.surface.withAlpha(128),
-                shape: BoxShape.circle,
-                border: Border.all(color: AppColors.textSecondary.withAlpha(77)),
-              ),
-              child: const Icon(
-                Icons.help_outline,
-                size: 18,
-                color: AppColors.textSecondary,
+          // Info button (fixed on left)
+          Padding(
+            padding: const EdgeInsets.only(left: 12),
+            child: GestureDetector(
+              onTap: () => _showPowerUpInfoDialog(context),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.surface.withAlpha(128),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: AppColors.textSecondary.withAlpha(77)),
+                ),
+                child: const Icon(
+                  Icons.help_outline,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
           ),
           const SizedBox(width: 8),
-          _PowerUpButton(
-            config: PowerUpConfigs.peek,
-            count: powerUpCounts['peek'] ?? 0,
-            isActive: isPeekActive,
-            onTap: () => onPowerUpTap(PowerUpType.peek),
-          ),
-          const SizedBox(width: 12),
-          _PowerUpButton(
-            config: PowerUpConfigs.freeze,
-            count: powerUpCounts['freeze'] ?? 0,
-            isActive: isFreezeActive,
-            remaining: freezeRemaining,
-            onTap: () => onPowerUpTap(PowerUpType.freeze),
-          ),
-          const SizedBox(width: 12),
-          _PowerUpButton(
-            config: PowerUpConfigs.hint,
-            count: powerUpCounts['hint'] ?? 0,
-            isActive: false,
-            onTap: () => onPowerUpTap(PowerUpType.hint),
-          ),
-          const SizedBox(width: 12),
-          _PowerUpButton(
-            config: PowerUpConfigs.magnet,
-            count: powerUpCounts['magnet'] ?? 0,
-            isActive: false,
-            onTap: () => onPowerUpTap(PowerUpType.magnet),
+          // Scrollable power-ups
+          Expanded(
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              itemCount: PowerUpConfigs.all.length,
+              separatorBuilder: (context, index) => const SizedBox(width: 10),
+              itemBuilder: (context, index) {
+                final config = PowerUpConfigs.all[index];
+                final count = powerUpCounts[config.id] ?? 0;
+                
+                // Determine if this power-up is active
+                bool isActive = false;
+                Duration? remaining;
+                
+                if (config.id == 'peek') {
+                  isActive = isPeekActive;
+                } else if (config.id == 'freeze') {
+                  isActive = isFreezeActive;
+                  remaining = freezeRemaining;
+                }
+                
+                return _PowerUpButton(
+                  config: config,
+                  count: count,
+                  isActive: isActive,
+                  remaining: remaining,
+                  onTap: () => onPowerUpTap(config.type),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -97,12 +102,8 @@ class PowerUpInfoDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final powerUps = [
-      PowerUpConfigs.peek,
-      PowerUpConfigs.freeze,
-      PowerUpConfigs.hint,
-      PowerUpConfigs.magnet,
-    ];
+    // Show all available power-ups
+    const powerUps = PowerUpConfigs.all;
 
     return Dialog(
       backgroundColor: Colors.transparent,
@@ -168,7 +169,7 @@ class PowerUpInfoDialog extends StatelessWidget {
                   SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Tap a power-up during the game to use it. Get more in the Shop!',
+                      'Tap a power-up during the game to use it, or use the ⚡ button to access all power-ups. Get more in the Power-ups shop!',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,

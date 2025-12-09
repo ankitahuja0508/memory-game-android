@@ -14,7 +14,11 @@ class DailyRewardService {
     final today = DateTime(now.year, now.month, now.day);
     
     if (status.lastClaimDate == null) {
-      return status.copyWith(canClaimToday: true, currentDay: 1);
+      // First time - can claim day 1
+      return const DailyRewardStatus(
+        currentStreak: 0,
+        canClaimToday: true,
+      );
     }
 
     final lastClaim = DateTime(
@@ -26,21 +30,16 @@ class DailyRewardService {
     final difference = today.difference(lastClaim).inDays;
 
     if (difference == 0) {
+      // Already claimed today
       return status.copyWith(canClaimToday: false);
     } else if (difference == 1) {
-      // Consecutive day
-      final nextDay = (status.currentDay % 7) + 1;
-      return status.copyWith(
-        canClaimToday: true,
-        currentDay: nextDay,
-        currentStreak: status.currentStreak + 1,
-      );
+      // Consecutive day - streak continues, can claim next day
+      return status.copyWith(canClaimToday: true);
     } else {
-      // Streak broken
-      return status.copyWith(
-        canClaimToday: true,
-        currentDay: 1,
+      // Streak broken (missed days) - reset to day 1
+      return const DailyRewardStatus(
         currentStreak: 0,
+        canClaimToday: true,
       );
     }
   }
@@ -48,17 +47,21 @@ class DailyRewardService {
   DailyReward? claim() {
     if (!_status.canClaimToday) return null;
 
-    final reward = DailyRewards.getRewardForDay(_status.currentDay);
+    // Get reward for the NEXT day (currentStreak + 1)
+    final dayToClaim = _status.currentStreak + 1;
+    final reward = DailyRewards.getRewardForDay(dayToClaim);
+    
+    // Update status: increment streak, mark as claimed today
     _status = _status.copyWith(
       lastClaimDate: DateTime.now(),
       canClaimToday: false,
-      currentStreak: _status.currentStreak + 1,
+      currentStreak: dayToClaim, // Now the streak equals the day just claimed
     );
 
     return reward;
   }
 
   List<DailyReward> getWeekRewards() {
-    return DailyRewards.weekCycle;
+    return DailyRewards.getWeekRewards(_status.currentStreak);
   }
 }

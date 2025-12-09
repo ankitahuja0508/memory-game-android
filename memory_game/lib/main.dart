@@ -9,6 +9,9 @@ void main() async {
   // Initialize Firebase
   await FirebaseService.instance.initialize();
   
+  // Initialize AdMob
+  await AdService.instance.initialize();
+  
   // Set preferred orientations
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,

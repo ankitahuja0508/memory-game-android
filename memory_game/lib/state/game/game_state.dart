@@ -3,7 +3,7 @@ import '../../data/models/models.dart';
 
 enum GamePhase {
   loading,
-  preview,    // NEW: Cards revealed for memorization
+  preview,    // Cards revealed for memorization
   playing,
   paused,
   completed,
@@ -22,12 +22,18 @@ class GameState extends Equatable {
   final int longestStreak;
   final Duration elapsedTime;
   final Duration? timeLimit;
-  final Duration previewTimeRemaining; // NEW: For preview countdown
+  final Duration previewTimeRemaining;
   final bool isPeekActive;
   final bool isFreezeActive;
   final bool isHintActive;
   final Duration? freezeTimeRemaining;
   final LevelConfig? levelConfig;
+  
+  // NEW: Power-up states
+  final bool isDoubleCoinsActive;      // Double coins at end of level
+  final int shieldCount;               // Number of mistakes protected by shield
+  final List<int>? lastMismatchIndices; // Indices of last mismatched cards (for Undo)
+  final bool canUndo;                  // True only right after a mismatch
 
   const GameState({
     this.phase = GamePhase.loading,
@@ -47,6 +53,11 @@ class GameState extends Equatable {
     this.isHintActive = false,
     this.freezeTimeRemaining,
     this.levelConfig,
+    // NEW defaults
+    this.isDoubleCoinsActive = false,
+    this.shieldCount = 0,
+    this.lastMismatchIndices,
+    this.canUndo = false,
   });
 
   /// Returns true if any power-up is active that should pause the timer
@@ -63,6 +74,9 @@ class GameState extends Equatable {
   int get remainingPairs => totalPairs - matches;
   bool get allMatched => matches >= totalPairs && totalPairs > 0;
   bool get isPerfect => mistakes == 0 && allMatched;
+  
+  /// Check if shield is active (has remaining uses)
+  bool get hasShieldProtection => shieldCount > 0;
 
   Duration get remainingTime {
     if (timeLimit == null) return Duration.zero;
@@ -88,6 +102,11 @@ class GameState extends Equatable {
     bool? isHintActive,
     Duration? freezeTimeRemaining,
     LevelConfig? levelConfig,
+    // NEW
+    bool? isDoubleCoinsActive,
+    int? shieldCount,
+    List<int>? lastMismatchIndices,
+    bool? canUndo,
   }) {
     return GameState(
       phase: phase ?? this.phase,
@@ -107,6 +126,11 @@ class GameState extends Equatable {
       isHintActive: isHintActive ?? this.isHintActive,
       freezeTimeRemaining: freezeTimeRemaining ?? this.freezeTimeRemaining,
       levelConfig: levelConfig ?? this.levelConfig,
+      // NEW
+      isDoubleCoinsActive: isDoubleCoinsActive ?? this.isDoubleCoinsActive,
+      shieldCount: shieldCount ?? this.shieldCount,
+      lastMismatchIndices: lastMismatchIndices ?? this.lastMismatchIndices,
+      canUndo: canUndo ?? this.canUndo,
     );
   }
 
@@ -115,5 +139,6 @@ class GameState extends Equatable {
     phase, level, cards, selectedIndices, moves, matches, mistakes,
     currentStreak, longestStreak, elapsedTime, timeLimit, previewTimeRemaining,
     isPeekActive, isFreezeActive, isHintActive, freezeTimeRemaining, levelConfig,
+    isDoubleCoinsActive, shieldCount, lastMismatchIndices, canUndo,
   ];
 }

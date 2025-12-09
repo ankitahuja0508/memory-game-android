@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../data/models/settings_model.dart';
 import '../../../domain/services/audio_service.dart';
+import '../../../domain/services/notification_service.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
@@ -18,6 +20,13 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   bool _showTutorial = false;
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _notificationsEnabled = NotificationService.instance.areNotificationsEnabled;
+  }
 
   void _showTutorialOverlay() {
     setState(() => _showTutorial = true);
@@ -25,6 +34,27 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   void _hideTutorialOverlay() {
     setState(() => _showTutorial = false);
+  }
+
+  void _toggleNotifications(bool value) async {
+    await NotificationService.instance.setNotificationsEnabled(value);
+    setState(() => _notificationsEnabled = value);
+  }
+
+  void _openPrivacyPolicy() async {
+    const url = 'https://memory-match---brain-training.web.app/privacy-policy';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _openTermsOfService() async {
+    const url = 'https://memory-match---brain-training.web.app/terms-of-service';
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
   }
 
   @override
@@ -96,7 +126,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     ),
                     const SizedBox(height: 24),
                     _SettingsSection(
-                      title: 'Help',
+                      title: 'Notifications',
+                      children: [
+                        SwitchListTile(
+                          secondary: const Icon(Icons.notifications, color: AppColors.primary),
+                          title: Text('Push Notifications', style: AppTextStyles.body1),
+                          subtitle: Text('Daily rewards & reminders', style: AppTextStyles.caption),
+                          value: _notificationsEnabled,
+                          onChanged: _toggleNotifications,
+                          activeTrackColor: AppColors.primary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 24),
+                    _SettingsSection(
+                      title: 'Help & Support',
                       children: [
                         ListTile(
                           leading: const Icon(Icons.help_outline, color: AppColors.primary),
@@ -107,6 +151,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             AudioService.instance.playButton();
                             _showTutorialOverlay();
                           },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.privacy_tip_outlined, color: AppColors.primary),
+                          title: Text('Privacy Policy', style: AppTextStyles.body1),
+                          subtitle: Text('How we handle your data', style: AppTextStyles.caption),
+                          trailing: const Icon(Icons.open_in_new, size: 16, color: AppColors.textSecondary),
+                          onTap: _openPrivacyPolicy,
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.description_outlined, color: AppColors.primary),
+                          title: Text('Terms of Service', style: AppTextStyles.body1),
+                          subtitle: Text('Usage terms & conditions', style: AppTextStyles.caption),
+                          trailing: const Icon(Icons.open_in_new, size: 16, color: AppColors.textSecondary),
+                          onTap: _openTermsOfService,
                         ),
                       ],
                     ),

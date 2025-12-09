@@ -76,7 +76,7 @@ class AppColors {
   ];
 
   static const List<Color> successGradient = [
-    Color(0xFF00E676),
-    Color(0xFF69F0AE),
+    Color(0xFF4CAF50),  // Softer green
+    Color(0xFF66BB6A),  // Muted green
   ];
 }

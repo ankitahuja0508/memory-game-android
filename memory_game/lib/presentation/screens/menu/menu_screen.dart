@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import '../../../config/ad_config.dart';
 import '../../../core/constants/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
-import '../../../data/models/level_model.dart';
-import '../../../domain/services/audio_service.dart';
-import '../../../domain/services/level_generator_service.dart';
+// import '../../../data/models/level_model.dart'; // Unused import
+import '../../../domain/services/services.dart';
 import '../../../state/player/player_cubit.dart';
 import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
@@ -21,6 +22,8 @@ class MenuScreen extends StatefulWidget {
 
 class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
   late AudioService _audioService;
+  BannerAd? _bannerAd;
+  bool _adLoadAttempted = false;
 
   @override
   void initState() {
@@ -32,8 +35,45 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
     _ensureMusicPlaying();
   }
 
+  void _loadBannerAd() async {
+    try {
+      debugPrint('🏠 HOME SCREEN: Requesting banner ad...');
+      final width = MediaQuery.of(context).size.width;
+      debugPrint('🏠 HOME SCREEN: Screen width = $width');
+      
+      final ad = await AdService.instance.createAdaptiveBannerAd(width, adUnitId: AdConfig.bannerHomeAdUnitId).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () {
+          debugPrint('⚠️ HOME SCREEN: Banner ad load TIMEOUT after 10 seconds');
+          return null;
+        },
+      );
+      
+      if (ad != null) {
+        debugPrint('✅ HOME SCREEN: Banner ad received, updating UI');
+      } else {
+        debugPrint('❌ HOME SCREEN: Banner ad is NULL');
+      }
+      
+      if (mounted) {
+        setState(() {
+          _bannerAd = ad;
+        });
+        if (ad != null) {
+          debugPrint('✅ HOME SCREEN: Banner ad set in state');
+        }
+      } else {
+        debugPrint('⚠️ HOME SCREEN: Widget not mounted, ad not set');
+      }
+    } catch (e, stackTrace) {
+      debugPrint('❌ HOME SCREEN: Exception loading banner ad: $e');
+      debugPrint('Stack: $stackTrace');
+    }
+  }
+
   @override
   void dispose() {
+    _bannerAd?.dispose();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
   }
@@ -49,6 +89,13 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    
+    // Load banner ad after context is available (only once)
+    if (!_adLoadAttempted) {
+      _adLoadAttempted = true;
+      _loadBannerAd();
+    }
+    
     // Ensure music plays when returning to this screen
     _ensureMusicPlaying();
   }
@@ -66,6 +113,16 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
     action();
   }
 
+  bool _hasAvailableThemes(PlayerState state) {
+    // Check if there are any themes that can be unlocked (level requirement met but not yet purchased)
+    const themes = LevelGeneratorService.themes;
+    return themes.any((theme) => 
+      !state.player.unlockedThemes.contains(theme.id) &&
+      state.highestUnlockedLevel >= theme.unlocksAtLevel
+    );
+  }
+
+  /* Unused method - commented out
   void _showGameSnackBar(BuildContext context, String message, String emoji, {bool isSuccess = true}) {
     ScaffoldMessenger.of(context).clearSnackBars();
     ScaffoldMessenger.of(context).showSnackBar(
@@ -106,8 +163,9 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
         duration: const Duration(seconds: 2),
       ),
     );
-  }
+  } */
 
+  /* Unused method - commented out
   void _handleThemeEquip(BuildContext context, GameCardTheme theme) {
     final playerCubit = context.read<PlayerCubit>();
     
@@ -119,22 +177,25 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
     // Equip is free once purchased
     playerCubit.equipTheme(theme.id);
     _showGameSnackBar(context, '${theme.name} theme equipped!', theme.icon);
-  }
+  } */
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final maxWidth = screenWidth > 600 ? 500.0 : screenWidth;
+    
     return GradientBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         body: SafeArea(
           child: BlocBuilder<PlayerCubit, PlayerState>(
             builder: (context, state) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                child: Column(
-                  children: [
-                    // Top Bar
-                    Row(
+              return Column(
+                children: [
+                  // Top Bar - Fixed at top
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                    child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Flexible(
@@ -149,67 +210,110 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
                         ),
                       ],
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.3),
+                  ),
 
-                    const SizedBox(height: 16),
+                  // Rest of the content - Centered and scrollable
+                  Expanded(
+                    child: Center(
+                      child: SingleChildScrollView(
+                        child: ConstrainedBox(
+                          constraints: BoxConstraints(maxWidth: maxWidth),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
 
-                    // Logo
-                    Container(
-                      width: 90,
-                      height: 90,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: AppColors.primaryGradient),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: AppColors.primary.withAlpha(77),
-                            blurRadius: 20,
-                            offset: const Offset(0, 6),
-                          ),
-                        ],
-                      ),
-                      child: const Center(
-                        child: Text('🧠', style: TextStyle(fontSize: 42)),
-                      ),
-                    ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
+                          // Logo with enhanced design
+                          Container(
+                            width: 110,
+                            height: 110,
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: AppColors.primaryGradient,
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(28),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: AppColors.primary.withAlpha(100),
+                                  blurRadius: 30,
+                                  spreadRadius: 2,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: const Center(
+                              child: Text('🧠', style: TextStyle(fontSize: 56)),
+                            ),
+                          ).animate().scale(duration: 500.ms, curve: Curves.elasticOut),
 
-                    const SizedBox(height: 12),
+                          const SizedBox(height: 20),
 
-                    FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text('Memory Match', style: AppTextStyles.headline1.copyWith(fontSize: 28)),
-                    )
-                        .animate()
-                        .fadeIn(delay: 200.ms)
-                        .slideY(begin: 0.2),
+                          // App Title
+                          Column(
+                            children: [
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Memory Match',
+                                  style: AppTextStyles.headline1.copyWith(
+                                    fontSize: 32,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  'Brain Training',
+                                  style: AppTextStyles.headline3.copyWith(
+                                    fontSize: 16,
+                                    color: AppColors.accent,
+                                    letterSpacing: 2,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          )
+                              .animate()
+                              .fadeIn(delay: 200.ms)
+                              .slideY(begin: 0.2),
 
-                    const SizedBox(height: 8),
+                          const SizedBox(height: 20),
 
-                    // Stats
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        _StatChip(icon: '⭐', value: state.totalStars.toString()),
-                        const SizedBox(width: 12),
-                        _StatChip(icon: '🎮', value: 'Lv ${state.highestUnlockedLevel}'),
-                      ],
-                    ).animate().fadeIn(delay: 300.ms),
+                          // Stats with enhanced design
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withAlpha(13),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color: AppColors.primary.withAlpha(50),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                _StatChip(icon: '⭐', value: state.totalStars.toString()),
+                                const SizedBox(width: 16),
+                                Container(
+                                  width: 1,
+                                  height: 20,
+                                  color: AppColors.primary.withAlpha(50),
+                                ),
+                                const SizedBox(width: 16),
+                                _StatChip(icon: '🎮', value: 'Lv ${state.highestUnlockedLevel}'),
+                              ],
+                            ),
+                          ).animate().fadeIn(delay: 300.ms).scale(begin: const Offset(0.8, 0.8)),
 
-                    const SizedBox(height: 16),
-
-                    // Theme Selector
-                    _ThemeSelector(
-                      currentThemeId: state.player.equippedTheme,
-                      unlockedThemes: state.player.unlockedThemes,
-                      highestLevel: state.highestUnlockedLevel,
-                      onThemeSelected: (themeId) {
-                        _audioService.playButton();
-                        final theme = LevelGeneratorService.getThemeById(themeId);
-                        _handleThemeEquip(context, theme);
-                      },
-                      onLockedThemeTap: (theme) => _showThemeUnlockInfo(context, theme, state),
-                    ).animate().fadeIn(delay: 350.ms).slideY(begin: 0.2),
-
-                    const Spacer(),
+                          const SizedBox(height: 40),
 
                     // Menu Buttons
                     SizedBox(
@@ -231,26 +335,26 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
                         children: [
                           Expanded(
                             child: GameButton(
-                              text: 'Shop',
-                              emoji: '🛒',
+                              text: 'Power-ups',
+                              emoji: '⚡',
                               onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/shop')),
                               isOutlined: true,
                               isSmall: true,
                             ),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 12),
                           Expanded(
-                          child: _BadgedButton(
-                            showBadge: state.hasDailyRewardAvailable,
-                            badgeColor: AppColors.accent,
-                            child: GameButton(
-                              text: 'Rewards',
-                              emoji: '🎁',
-                              onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/daily')),
-                              isOutlined: true,
-                              isSmall: true,
+                            child: _BadgedButton(
+                              showBadge: _hasAvailableThemes(state),
+                              badgeColor: AppColors.primary,
+                              child: GameButton(
+                                text: 'Themes',
+                                emoji: '🎨',
+                                onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/themes')),
+                                isOutlined: true,
+                                isSmall: true,
+                              ),
                             ),
-                          ),
                           ),
                         ],
                       ),
@@ -259,25 +363,71 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
                     const SizedBox(height: 12),
 
                     SizedBox(
-                      width: double.infinity,
                       height: 44,
-                      child: _BadgedButton(
-                        showBadge: state.unclaimedAchievementCount > 0,
-                        badgeCount: state.unclaimedAchievementCount,
-                        badgeColor: AppColors.success,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: _BadgedButton(
+                              showBadge: state.hasDailyRewardAvailable,
+                              badgeColor: AppColors.accent,
+                              child: GameButton(
+                                text: 'Rewards',
+                                emoji: '🎁',
+                                onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/daily')),
+                                isOutlined: true,
+                                isSmall: true,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _BadgedButton(
+                              showBadge: state.unclaimedAchievementCount > 0,
+                              badgeCount: state.unclaimedAchievementCount,
+                              badgeColor: AppColors.success,
+                              child: GameButton(
+                                text: 'Achievements',
+                                emoji: '🏆',
+                                onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/achievements')),
+                                isOutlined: true,
+                                isSmall: true,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3),
+                    
+                    // Leaderboard button (if enabled via Remote Config)
+                    if (RemoteConfigService.instance.isLeaderboardEnabled)
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
                         child: GameButton(
-                          text: 'Achievements',
-                          emoji: '🏆',
-                          onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/achievements')),
+                          text: 'Leaderboard',
+                          emoji: '🏅',
+                          onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/leaderboard')),
                           isOutlined: true,
                           isSmall: true,
                         ),
+                      ).animate().fadeIn(delay: 650.ms).slideY(begin: 0.3),
+                              ],
+                            ),
+                          ),
+                        ),
                       ),
-                    ).animate().fadeIn(delay: 600.ms).slideY(begin: 0.3),
-
-                    const SizedBox(height: 20),
-                  ],
-                ),
+                    ),
+                  ),
+                  
+                  // Banner Ad at bottom of home screen
+                  if (_bannerAd != null && !AdService.instance.adsRemoved)
+                    Container(
+                      alignment: Alignment.center,
+                      width: _bannerAd!.size.width.toDouble(),
+                      height: _bannerAd!.size.height.toDouble(),
+                      margin: const EdgeInsets.only(top: 8),
+                      child: AdWidget(ad: _bannerAd!),
+                    ).animate().fadeIn(delay: 800.ms),
+                ],
               );
             },
           ),
@@ -286,6 +436,7 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
     );
   }
 
+  /* Unused method - commented out
   void _showThemeUnlockInfo(BuildContext context, GameCardTheme theme, PlayerState state) {
     _audioService.playButton();
     
@@ -536,7 +687,7 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
         ],
       ),
     );
-  }
+  } */
 }
 
 class _StatChip extends StatelessWidget {
@@ -628,6 +779,7 @@ class _BadgedButton extends StatelessWidget {
 }
 
 /// Horizontal theme selector carousel
+/* Unused widget - commented out
 class _ThemeSelector extends StatelessWidget {
   final String currentThemeId;
   final List<String> unlockedThemes;
@@ -854,3 +1006,4 @@ class _ThemeCard extends StatelessWidget {
     );
   }
 }
+*/

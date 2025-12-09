@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ad-services-config>
+    <!-- This file is required for AdMob to work on Android 13+ -->
+    <!-- See: https://developers.google.com/admob/android/privacy/gma-config -->
+</ad-services-config>
+

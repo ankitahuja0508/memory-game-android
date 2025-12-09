@@ -80,14 +80,28 @@ class _SplashScreenState extends State<SplashScreen> {
                   .then()
                   .shimmer(duration: 1.seconds),
               const SizedBox(height: 32),
-              Text(
-                'Memory Match',
-                style: AppTextStyles.headline1.copyWith(
-                  foreground: Paint()
-                    ..shader = const LinearGradient(
-                      colors: [AppColors.primary, AppColors.secondary],
-                    ).createShader(const Rect.fromLTWH(0, 0, 200, 70)),
-                ),
+              Column(
+                children: [
+                  Text(
+                    'Memory Match',
+                    style: AppTextStyles.headline1.copyWith(
+                      fontSize: 32,
+                      foreground: Paint()
+                        ..shader = const LinearGradient(
+                          colors: [AppColors.primary, AppColors.secondary],
+                        ).createShader(const Rect.fromLTWH(0, 0, 200, 70)),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Brain Training',
+                    style: AppTextStyles.headline3.copyWith(
+                      color: AppColors.accent,
+                      letterSpacing: 3,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               )
                   .animate()
                   .fadeIn(delay: 300.ms, duration: 500.ms)

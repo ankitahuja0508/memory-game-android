@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../data/models/models.dart';
 import '../../domain/services/services.dart';
@@ -50,6 +51,8 @@ class PlayerCubit extends Cubit<PlayerState> {
   Future<void> updateLevelProgress(GameResult result) async {
     final current = state.levelProgress[result.level];
     final previousHighestLevel = state.highestUnlockedLevel;
+    
+    debugPrint('📝 Updating level ${result.level} progress...');
     
     final newProgress = LevelProgress(
       level: result.level,
@@ -150,10 +153,13 @@ class PlayerCubit extends Cubit<PlayerState> {
       }
     }
 
-    // Save
+    // Save locally
     await _storageService.savePlayer(newPlayer);
     await _storageService.saveLevelProgress(newLevelProgress);
     await _storageService.saveAchievements(_achievementService.progress);
+    
+    // Sync to Firebase (cloud save)
+    _syncToFirebase(newPlayer, newLevelProgress);
   }
 
   Future<void> updateSettings(SettingsModel settings) async {
@@ -165,6 +171,7 @@ class PlayerCubit extends Cubit<PlayerState> {
     final newPlayer = state.player.copyWith(coins: state.player.coins + amount);
     emit(state.copyWith(player: newPlayer));
     await _storageService.savePlayer(newPlayer);
+    _syncToFirebase(newPlayer, state.levelProgress); // Sync to cloud
   }
 
   Future<void> addGems(int amount) async {
@@ -242,6 +249,18 @@ class PlayerCubit extends Cubit<PlayerState> {
     await _storageService.savePlayer(newPlayer);
     await _storageService.saveAchievements(_achievementService.progress);
     return true;
+  }
+
+  /// Add power-ups to inventory (used for refunds or rewards)
+  Future<void> addPowerUp(String powerUpId, int amount) async {
+    final newInventory = Map<String, int>.from(state.player.powerUpInventory);
+    newInventory[powerUpId] = (newInventory[powerUpId] ?? 0) + amount;
+
+    final newPlayer = state.player.copyWith(
+      powerUpInventory: newInventory,
+    );
+    emit(state.copyWith(player: newPlayer));
+    await _storageService.savePlayer(newPlayer);
   }
 
   Future<void> unlockTheme(String themeId) async {
@@ -367,5 +386,42 @@ class PlayerCubit extends Cubit<PlayerState> {
   Future<void> resetProgress() async {
     await _storageService.clearAll();
     emit(PlayerState(player: PlayerModel.newPlayer(), isLoading: false));
+  }
+
+  /// Sync player data to Firebase (cloud save)
+  void _syncToFirebase(PlayerModel player, Map<int, LevelProgress> levelProgress) {
+    try {
+      final firebaseService = FirebaseService.instance;
+      if (firebaseService.currentUser == null) {
+        debugPrint('⚠️ Cannot sync to Firebase - no user signed in');
+        return;
+      }
+      
+      debugPrint('☁️  Syncing data to Firebase for user: ${firebaseService.currentUser?.uid}');
+      
+      // Save player data to Firestore (non-blocking)
+      firebaseService.savePlayerData({
+        'userId': firebaseService.currentUser!.uid,
+        'level': state.highestUnlockedLevel,
+        'totalStars': player.totalStars,
+        'coins': player.coins,
+        'gems': player.gems,
+        'totalGamesPlayed': player.totalGamesPlayed,
+        'lastPlayed': DateTime.now().toIso8601String(),
+      }).then((_) {
+        debugPrint('✅ Player data synced to Firebase');
+      }).catchError((error) {
+        debugPrint('❌ Error syncing to Firebase: $error');
+      });
+      
+      // Log analytics event (non-blocking)
+      firebaseService.logEvent('player_progress', parameters: {
+        'level': state.highestUnlockedLevel,
+        'total_stars': player.totalStars,
+      });
+      
+    } catch (e) {
+      debugPrint('❌ Firebase sync error: $e');
+    }
   }
 }
