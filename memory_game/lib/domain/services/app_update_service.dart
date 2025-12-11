@@ -9,7 +9,7 @@ import 'remote_config_service.dart';
 
 class AppUpdateService {
   static const String _currentVersion = '1.0.0'; // Update this with each release
-  static const int _currentBuildNumber = 1; // Update this with each release
+  static const int _currentBuildNumber = 2; // Update this with each release
   
   static const String _lastCheckedKey = 'last_update_checked';
   static const String _dismissedVersionKey = 'dismissed_update_version';

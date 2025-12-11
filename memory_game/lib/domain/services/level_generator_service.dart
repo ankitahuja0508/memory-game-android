@@ -201,7 +201,7 @@ class LevelGeneratorService {
     
     // Normal levels: Scale with pairs
     if (level <= 5) {
-      return 3500; // Longer for beginners
+      return 5000; // 5 seconds for beginners (memorize timer)
     } else if (level <= 15) {
       return 3000;
     } else if (level <= 30) {

@@ -26,47 +26,25 @@ class NotificationService {
   static const String _lastOpenKey = 'last_app_open';
   static const String _notificationsEnabledKey = 'notifications_enabled';
 
-  /// Initialize notification service
+  /// Initialize notification service (WITHOUT requesting permission)
   Future<void> initialize() async {
     try {
       _prefs = await SharedPreferences.getInstance();
       
       // Initialize timezone database
       tz.initializeTimeZones();
-      final location = tz.getLocation('America/New_York'); // You can change this to the user's timezone
-      tz.setLocalLocation(location);
+      tz.setLocalLocation(tz.local); // Use device's local timezone
 
-      // Request permissions
-      final settings = await _messaging.requestPermission(
-        alert: true,
-        announcement: false,
-        badge: true,
-        carPlay: false,
-        criticalAlert: false,
-        provisional: false,
-        sound: true,
-      );
-
-      if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-          settings.authorizationStatus == AuthorizationStatus.provisional) {
-        debugPrint('✅ Notification permission granted');
-      } else {
-        debugPrint('❌ Notification permission denied');
-        return;
-      }
-
-      // Initialize local notifications
+      // Initialize local notifications (doesn't require permission)
       await _initializeLocalNotifications();
 
       // Set up Firebase messaging handlers
       await _setupFirebaseMessaging();
 
       _isInitialized = true;
-      debugPrint('✅ Notification service initialized');
+      debugPrint('✅ Notification service initialized (permission handled by UI)');
 
-      // Schedule engagement notifications
-      await scheduleEngagementNotifications();
-
+      // Note: Notifications will be scheduled when user grants permission via banner
       // Update last open time
       await _updateLastOpenTime();
 
@@ -389,8 +367,7 @@ class NotificationService {
   /// Cancel engagement notifications (when user opens app)
   Future<void> onAppOpened() async {
     await _updateLastOpenTime();
-    // Reschedule notifications from now
-    await scheduleEngagementNotifications();
+    // Note: Notifications are scheduled when user grants permission via banner
   }
 }
 

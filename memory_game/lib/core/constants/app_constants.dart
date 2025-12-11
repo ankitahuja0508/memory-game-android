@@ -13,7 +13,7 @@ class AppConstants {
   static const int maxLevel = 9999;
 
   // Preview time at start of level (milliseconds)
-  static const int previewDuration = 3000; // 3 seconds to memorize
+  static const int previewDuration = 5000; // 5 seconds to memorize
 
   // Animation Durations (milliseconds)
   static const int cardFlipDuration = 300;

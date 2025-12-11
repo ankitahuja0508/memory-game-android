@@ -6,6 +6,8 @@ import '../../domain/services/services.dart';
 import 'game_state.dart';
 
 class GameCubit extends Cubit<GameState> {
+  // Prevent multiple rapid taps causing race conditions
+  bool _tapLocked = false;
   final LevelGeneratorService _levelGenerator;
   final AudioService _audioService;
   final HapticService _hapticService;
@@ -134,7 +136,12 @@ class GameCubit extends Cubit<GameState> {
   }
 
   void flipCard(int index) {
-    if (!state.canInteract) return;
+    if (_tapLocked) return; // Debounce rapid taps
+    _tapLocked = true;
+    if (!state.canInteract) {
+      _tapLocked = false; // ensure lock released
+      return;
+    }
     if (index < 0 || index >= state.cards.length) return;
 
     final card = state.cards[index];
@@ -158,6 +165,8 @@ class GameCubit extends Cubit<GameState> {
     if (newSelected.length == 2) {
       _checkMatch();
     }
+    // Release tap lock after short delay to allow card animation
+    Future.delayed(const Duration(milliseconds: 350), () => _tapLocked = false);
   }
 
   void _checkMatch() {
@@ -437,8 +446,7 @@ class GameCubit extends Cubit<GameState> {
     final newMoves = state.moves > 0 ? state.moves - 1 : 0;
     final newMistakes = state.mistakes > 0 ? state.mistakes - 1 : state.mistakes;
 
-    debugPrint('   New moves: $newMoves');
-    debugPrint('   New mistakes: $newMistakes');
+    debugPrint('   Reducing to -> Moves: $newMoves, Mistakes: $newMistakes');
 
     emit(state.copyWith(
       moves: newMoves,
@@ -447,7 +455,7 @@ class GameCubit extends Cubit<GameState> {
       lastMismatchIndices: null,
     ));
     
-    debugPrint('✅ Undo complete! Moves: ${state.moves}, Mistakes: ${state.mistakes}');
+    debugPrint('✅ Undo complete! New state -> Moves: $newMoves, Mistakes: $newMistakes');
   }
 
   /// DOUBLE COINS: Double the coin reward at end of level
@@ -499,12 +507,18 @@ class GameCubit extends Cubit<GameState> {
 
   /// Add extra time (for rewarded ad)
   void addExtraTime(int seconds) {
-    if (state.phase != GamePhase.timeout) return;
+    if (state.phase != GamePhase.timeout && state.phase != GamePhase.playing) return;
     
-    // Resume game with extra time by going back to playing phase
-    emit(state.copyWith(phase: GamePhase.playing));
+    // Reduce elapsed time so that remaining increases by [seconds]
+    final newElapsed = state.elapsedTime - Duration(seconds: seconds);
+    final adjustedElapsed = newElapsed.isNegative ? Duration.zero : newElapsed;
+
+    emit(state.copyWith(
+      phase: GamePhase.playing,
+      elapsedTime: adjustedElapsed,
+    ));
     
-    // Restart the timer
+    // Restart or continue the timer so ticking resumes immediately
     _startGameTimer();
   }
 

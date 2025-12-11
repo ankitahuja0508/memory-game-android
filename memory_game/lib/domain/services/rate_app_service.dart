@@ -96,7 +96,6 @@ class RateAppService {
       if (isAvailable) {
         debugPrint('📱 Requesting in-app review...');
         await _inAppReview.requestReview();
-        
         // Update counters
         await _prefs?.setInt(_promptCountKey, _promptCount + 1);
         await _prefs?.setInt(_lastPromptKey, DateTime.now().millisecondsSinceEpoch);
@@ -118,8 +117,8 @@ class RateAppService {
   Future<void> openStoreListing() async {
     try {
       await _inAppReview.openStoreListing(
-        appStoreId: '123456789', // Replace with actual App Store ID
-        microsoftStoreId: null,
+        appStoreId: 'com.aexyn.memorygame', // Play-Store package name for Android
+
       );
       await markAsRated();
     } catch (e) {

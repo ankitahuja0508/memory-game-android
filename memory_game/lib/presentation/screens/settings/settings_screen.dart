@@ -83,13 +83,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       title: 'Game Settings',
                       children: [
                         _ToggleTile(
-                          icon: Icons.visibility,
-                          title: 'Show Preview',
-                          subtitle: 'Show cards at start of level',
-                          value: state.settings.showPreview,
+                          icon: Icons.info_outline,
+                          title: 'Memorization Dialog',
+                          subtitle: 'Show tip before memorization phase',
+                          value: state.settings.showMemorizationDialog,
                           onChanged: (value) => _updateSettings(
                             context,
-                            state.settings.copyWith(showPreview: value),
+                            state.settings.copyWith(showMemorizationDialog: value),
                           ),
                         ),
                         _ToggleTile(

@@ -47,16 +47,27 @@ class AdService {
       // Load persisted rewarded ad count from storage
       await _loadRewardedAdCount();
       
-      // Enable test mode for emulator/simulator
-      // This makes test ads show immediately on emulators and real devices
-      final configuration = RequestConfiguration(
-        testDeviceIds: [
-          // Add your device ID here when testing on real device
-          // Get it from logcat: "Use RequestConfiguration.Builder().setTestDeviceIds(Arrays.asList("YOUR_DEVICE_ID"))"
-        ],
-      );
-      await MobileAds.instance.updateRequestConfiguration(configuration);
-      debugPrint('✅ Test device configuration set');
+      // CRITICAL: Only set test devices in debug mode
+      // In release mode, we want real ads from production ad units
+      if (AdConfig.isDebug) {
+        final configuration = RequestConfiguration(
+          testDeviceIds: [
+            'EMULATOR',
+            'kGADSimulatorID', // iOS Simulator
+            // Add your physical device ID here for testing
+            // Get it from logcat: "Use RequestConfiguration.Builder().setTestDeviceIds..."
+          ],
+        );
+        await MobileAds.instance.updateRequestConfiguration(configuration);
+        debugPrint('✅ Test device configuration set (DEBUG MODE)');
+      } else {
+        // In production, clear any test device configuration
+        final configuration = RequestConfiguration(
+          testDeviceIds: [],
+        );
+        await MobileAds.instance.updateRequestConfiguration(configuration);
+        debugPrint('✅ Production ad configuration set (RELEASE MODE)');
+      }
       
       // Initialize Mobile Ads SDK
       debugPrint('🔄 Calling MobileAds.instance.initialize()...');
@@ -66,12 +77,44 @@ class AdService {
       debugPrint('==========================================');
       debugPrint('✅ ADMOB INITIALIZED SUCCESSFULLY');
       debugPrint('📱 Adapter status: ${initCompleter.adapterStatuses}');
-      debugPrint('🏷️ Build Mode: ${AdConfig.isProduction ? "PRODUCTION (Real Ads)" : "DEBUG (Test Ads)"}');
-      debugPrint('🔑 Using App ID: ${AdConfig.appId.substring(0, 30)}...');
+      debugPrint('');
+      debugPrint('🔍 BUILD MODE VERIFICATION:');
+      debugPrint('   kReleaseMode: ${AdConfig.isProduction}');
+      debugPrint('   kDebugMode: ${AdConfig.isDebug}');
+      debugPrint('   Mode: ${AdConfig.isProduction ? "PRODUCTION (Real Ads)" : "DEBUG (Test Ads)"}');
+      debugPrint('');
+      debugPrint('🔑 APP ID VERIFICATION:');
+      debugPrint('   Full App ID: ${AdConfig.appId}');
+      final isTestAppId = AdConfig.appId.contains('3940256099942544');
+      debugPrint('   Type: ${isTestAppId ? "⚠️ TEST APP ID (PROBLEM!)" : "✅ PRODUCTION APP ID"}');
       debugPrint('==========================================');
       
       // Print full ad configuration
       AdConfig.printConfig();
+      
+      // CRITICAL WARNING if test ads are showing in what should be production
+      if (AdConfig.appId.contains('3940256099942544')) {
+        debugPrint('');
+        debugPrint('⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️');
+        debugPrint('⚠️  CRITICAL WARNING: USING TEST ADS!');
+        debugPrint('⚠️  App ID: ${AdConfig.appId}');
+        debugPrint('⚠️  This is Google\'s test App ID');
+        debugPrint('⚠️  DO NOT PUBLISH TO PLAY STORE!');
+        debugPrint('⚠️  ');
+        debugPrint('⚠️  If this is a release build, there is a problem!');
+        debugPrint('⚠️  Build must be done with: flutter build apk --release');
+        debugPrint('⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️⚠️');
+        debugPrint('');
+      } else {
+        debugPrint('');
+        debugPrint('✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅');
+        debugPrint('✅  PRODUCTION ADS CONFIGURED');
+        debugPrint('✅  App ID: ${AdConfig.appId}');
+        debugPrint('✅  Safe to publish to Play Store');
+        debugPrint('✅  (Note: Real ads may take 1-2 hours to fill)');
+        debugPrint('✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅✅');
+        debugPrint('');
+      }
       
       // Pre-load ads after SDK is ready
       Future.delayed(const Duration(milliseconds: 1000), () {

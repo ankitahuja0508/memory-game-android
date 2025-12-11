@@ -53,16 +53,17 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
       hapticService: HapticService(),
     );
 
-    final showPreview = playerState.settings.showPreview;
+    final showDialog = playerState.settings.showMemorizationDialog;
     
     // Check if we should show memorization tutorial dialog
-    if (showPreview) {
+    // Note: The preview/memorize timer always runs, this only controls the dialog
+    if (showDialog) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _showMemorizationDialog();
       });
     } else {
-      // Start the level immediately if preview is disabled
-      _gameCubit.startLevel(_currentLevel, themeId: playerState.player.equippedTheme, showPreview: false);
+      // Start the level with preview (memorize timer) but without the dialog
+      _gameCubit.startLevel(_currentLevel, themeId: playerState.player.equippedTheme, showPreview: true);
     }
     
     // Show power-up tutorial on first level if user has power-ups
@@ -167,10 +168,10 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                     if (dontShowAgain) {
                       final playerCubit = context.read<PlayerCubit>();
                       playerCubit.updateSettings(
-                        playerCubit.state.settings.copyWith(showPreview: false),
+                        playerCubit.state.settings.copyWith(showMemorizationDialog: false),
                       );
                     }
-                    // Start the level with preview/countdown
+                    // Start the level with preview/countdown (always show preview timer)
                     _gameCubit.startLevel(
                       _currentLevel,
                       themeId: context.read<PlayerCubit>().state.player.equippedTheme,
@@ -373,11 +374,11 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
     // Play button sound
     _audioService.playButton();
     
-    // Start the new level
+    // Start the new level (always with preview/memorize timer)
     final playerState = context.read<PlayerCubit>().state;
     _gameCubit.startLevel(_currentLevel, 
       themeId: playerState.player.equippedTheme, 
-      showPreview: playerState.settings.showPreview);
+      showPreview: true);
   }
 
   void _restartLevel() {

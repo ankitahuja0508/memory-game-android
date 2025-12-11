@@ -12,6 +12,7 @@ import '../../../state/player/player_state.dart';
 import '../../widgets/common/gradient_background.dart';
 import '../../widgets/common/currency_display.dart';
 import '../../widgets/common/game_button.dart';
+import '../../widgets/notification_permission_banner.dart';
 
 class MenuScreen extends StatefulWidget {
   const MenuScreen({super.key});
@@ -211,6 +212,9 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
                       ],
                     ).animate().fadeIn(duration: 400.ms).slideY(begin: -0.3),
                   ),
+
+                  // Notification Permission Banner
+                  const NotificationPermissionBanner(),
 
                   // Rest of the content - Centered and scrollable
                   Expanded(

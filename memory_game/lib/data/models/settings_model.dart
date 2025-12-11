@@ -4,14 +4,14 @@ class SettingsModel extends Equatable {
   final bool soundEnabled;
   final bool musicEnabled;
   final bool vibrationEnabled;
-  final bool showPreview; // Show cards at start of level
+  final bool showMemorizationDialog; // Show memorization dialog before game starts
   final bool tutorialCompleted; // Has user seen the tutorial
 
   const SettingsModel({
     this.soundEnabled = true,
     this.musicEnabled = true,
     this.vibrationEnabled = true,
-    this.showPreview = true,
+    this.showMemorizationDialog = true,
     this.tutorialCompleted = false,
   });
 
@@ -19,13 +19,13 @@ class SettingsModel extends Equatable {
     bool? soundEnabled,
     bool? musicEnabled,
     bool? vibrationEnabled,
-    bool? showPreview,
+    bool? showMemorizationDialog,
     bool? tutorialCompleted,
   }) => SettingsModel(
     soundEnabled: soundEnabled ?? this.soundEnabled,
     musicEnabled: musicEnabled ?? this.musicEnabled,
     vibrationEnabled: vibrationEnabled ?? this.vibrationEnabled,
-    showPreview: showPreview ?? this.showPreview,
+    showMemorizationDialog: showMemorizationDialog ?? this.showMemorizationDialog,
     tutorialCompleted: tutorialCompleted ?? this.tutorialCompleted,
   );
 
@@ -33,7 +33,7 @@ class SettingsModel extends Equatable {
     'soundEnabled': soundEnabled,
     'musicEnabled': musicEnabled,
     'vibrationEnabled': vibrationEnabled,
-    'showPreview': showPreview,
+    'showMemorizationDialog': showMemorizationDialog,
     'tutorialCompleted': tutorialCompleted,
   };
 
@@ -41,10 +41,11 @@ class SettingsModel extends Equatable {
     soundEnabled: json['soundEnabled'] as bool? ?? true,
     musicEnabled: json['musicEnabled'] as bool? ?? true,
     vibrationEnabled: json['vibrationEnabled'] as bool? ?? true,
-    showPreview: json['showPreview'] as bool? ?? true,
+    // Support old 'showPreview' key for backward compatibility
+    showMemorizationDialog: json['showMemorizationDialog'] as bool? ?? json['showPreview'] as bool? ?? true,
     tutorialCompleted: json['tutorialCompleted'] as bool? ?? false,
   );
 
   @override
-  List<Object?> get props => [soundEnabled, musicEnabled, vibrationEnabled, showPreview, tutorialCompleted];
+  List<Object?> get props => [soundEnabled, musicEnabled, vibrationEnabled, showMemorizationDialog, tutorialCompleted];
 }
