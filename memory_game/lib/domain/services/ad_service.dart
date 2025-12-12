@@ -227,6 +227,9 @@ class AdService {
            _rewardedAdsWatchedToday < AdConfig.maxRewardedAdsPerDay;
   }
 
+  /// Callback for when ad closes (with or without reward)
+  void Function(bool rewarded)? _onAdClosed;
+
   /// Show rewarded video ad
   /// [placement] - Optional placement identifier for analytics (e.g., 'shop', 'extra_time', 'daily_bonus')
   /// Returns true if reward should be given
@@ -238,21 +241,55 @@ class AdService {
 
     debugPrint('📺 Showing rewarded ad for placement: $placement');
     final completer = Completer<bool>();
+    bool earnedReward = false;
+
+    // Set up callbacks before showing
+    _rewardedAd!.fullScreenContentCallback = FullScreenContentCallback(
+      onAdDismissedFullScreenContent: (ad) {
+        debugPrint('Rewarded ad dismissed, reward earned: $earnedReward');
+        ad.dispose();
+        _rewardedAd = null;
+        _loadRewardedAd(); // Preload next ad
+        
+        // Complete the future when ad is dismissed
+        if (!completer.isCompleted) {
+          completer.complete(earnedReward);
+        }
+        _onAdClosed?.call(earnedReward);
+      },
+      onAdFailedToShowFullScreenContent: (ad, error) {
+        debugPrint('❌ Rewarded ad failed to show: $error');
+        ad.dispose();
+        _rewardedAd = null;
+        _loadRewardedAd(); // Retry loading
+        if (!completer.isCompleted) {
+          completer.complete(false);
+        }
+        _onAdClosed?.call(false);
+      },
+    );
 
     try {
       await _rewardedAd!.show(
         onUserEarnedReward: (ad, reward) {
           debugPrint('✅ User earned reward: ${reward.amount} ${reward.type} (placement: $placement)');
-          _incrementRewardedAdCount();
-          completer.complete(true);
+          earnedReward = true;
+          _incrementRewardedAdCount(placement: placement);
         },
       );
     } catch (e) {
       debugPrint('❌ Error showing rewarded ad: $e');
-      completer.complete(false);
+      if (!completer.isCompleted) {
+        completer.complete(false);
+      }
     }
 
     return completer.future;
+  }
+  
+  /// Set callback for when ad closes
+  void setOnAdClosedCallback(void Function(bool rewarded)? callback) {
+    _onAdClosed = callback;
   }
   
   /// Pre-load rewarded ad for specific placement
@@ -326,7 +363,13 @@ class AdService {
     }
   }
 
-  void _incrementRewardedAdCount() {
+  void _incrementRewardedAdCount({String placement = 'shop'}) {
+    // Extra time ads are unlimited - don't count them toward daily limit
+    if (placement == 'extra_time') {
+      debugPrint('📺 Extra time ad watched (unlimited, not counted toward daily limit)');
+      return;
+    }
+    
     _rewardedAdsWatchedToday++;
     _lastRewardedAdDate = DateTime.now();
     _saveRewardedAdCount(); // Save immediately after increment

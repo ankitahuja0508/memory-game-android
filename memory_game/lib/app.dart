@@ -129,27 +129,168 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
     // Wait a bit to let the app fully load
     await Future.delayed(const Duration(seconds: 2));
     
+    // First check if force update is enabled via Remote Config
+    final forceUpdate = RemoteConfigService.instance.updateRequired;
+    
+    if (forceUpdate && mounted) {
+      // Show force update dialog - can't be dismissed
+      _showForceUpdateDialog();
+      return;
+    }
+    
+    // Otherwise check for regular update
     final updateInfo = await AppUpdateService.instance.checkForUpdate();
     
     if (updateInfo != null && mounted) {
-      // Show update dialog
-      showDialog(
-        context: context,
-        barrierDismissible: !updateInfo.isRequired,
-        builder: (context) => AlertDialog(
-          title: const Text('🚀 Update Available!'),
+      _showUpdateDialog(updateInfo);
+    }
+  }
+  
+  void _showForceUpdateDialog() {
+    final updateMessage = RemoteConfigService.instance.updateMessage;
+    
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false, // Prevents back button from dismissing
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Column(
+            children: [
+              Text('🚀', style: TextStyle(fontSize: 48)),
+              SizedBox(height: 12),
+              Text(
+                'Update Required',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withAlpha(30),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.orange.withAlpha(100)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.orange, size: 28),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Text(
+                        updateMessage,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Please update to the latest version to continue playing.',
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
+          ),
+          actionsAlignment: MainAxisAlignment.center,
+          actionsPadding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
+          actions: [
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  AppUpdateService.instance.openStorePage();
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                icon: const Icon(Icons.system_update),
+                label: const Text(
+                  'Update Now',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+  
+  void _showUpdateDialog(UpdateInfo updateInfo) {
+    showDialog(
+      context: context,
+      barrierDismissible: !updateInfo.isRequired,
+      builder: (context) => PopScope(
+        canPop: !updateInfo.isRequired,
+        child: AlertDialog(
+          backgroundColor: const Color(0xFF1E1E2E),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Text(
+            '🚀 Update Available!',
+            style: TextStyle(color: Colors.white),
+            textAlign: TextAlign.center,
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('New version ${updateInfo.latestVersion} is available'),
+              Text(
+                'New version ${updateInfo.latestVersion} is available',
+                style: const TextStyle(color: Colors.white),
+              ),
               const SizedBox(height: 8),
-              Text(updateInfo.updateMessage),
+              Text(
+                updateInfo.updateMessage,
+                style: const TextStyle(color: Colors.white70),
+              ),
               if (updateInfo.isRequired) ...[
-                const SizedBox(height: 8),
-                const Text(
-                  '⚠️ This update is required to continue playing',
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withAlpha(30),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: Colors.red.withAlpha(100)),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.warning, color: Colors.red, size: 20),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'This update is required to continue playing',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: Colors.red,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ],
@@ -170,12 +311,15 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
                 }
                 AppUpdateService.instance.openStorePage();
               },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green,
+              ),
               child: const Text('Update Now'),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
   }
 
   @override

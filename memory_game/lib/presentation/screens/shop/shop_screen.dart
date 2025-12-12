@@ -297,6 +297,9 @@ class _RewardedAdCardState extends State<_RewardedAdCard> {
 
     setState(() => _isWatchingAd = true);
 
+    // Pause music during ad
+    AudioService.instance.pauseMusic();
+
     try {
       final rewarded = await AdService.instance.showRewardedAd(placement: 'shop');
       
@@ -326,6 +329,8 @@ class _RewardedAdCardState extends State<_RewardedAdCard> {
         }
       }
     } finally {
+      // Always resume music after ad (whether successful or not)
+      AudioService.instance.resumeMusic();
       if (mounted) {
         setState(() => _isWatchingAd = false);
       }

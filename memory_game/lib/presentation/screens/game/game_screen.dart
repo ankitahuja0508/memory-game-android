@@ -1253,7 +1253,15 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                   onPressed: () async {
                     Navigator.pop(context); // Close dialog first
                     
+                    // Pause music during ad
+                    _audioService.pauseMusic();
+                    
                     final rewarded = await AdService.instance.showRewardedAd(placement: 'extra_time');
+                    
+                    // Resume music after ad
+                    if (mounted) {
+                      _audioService.resumeMusic();
+                    }
                     
                     if (rewarded && mounted) {
                       // Add 30 seconds to timer
@@ -1278,7 +1286,7 @@ class _GameScreenState extends State<GameScreen> with WidgetsBindingObserver {
                         ),
                       );
                     } else if (mounted) {
-                      // Ad failed, show timeout dialog again
+                      // Ad failed or cancelled, show timeout dialog again
                       _showTimeoutDialog();
                     }
                   },
