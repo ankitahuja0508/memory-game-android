@@ -204,10 +204,12 @@ class AdConfig {
   static const int rewardedExtraTimeSeconds = 30;
 
   /// Minimum time between interstitial ads (seconds)
-  static const int interstitialAdCooldown = 120; // 2 minutes
+  /// Increased for new app - can be reduced later when user base grows
+  static const int interstitialAdCooldown = 600; // 10 minutes
 
   /// Show interstitial ad every N levels completed
-  static const int interstitialAdFrequency = 3;
+  /// Increased for new app - can be reduced later when user base grows
+  static const int interstitialAdFrequency = 10; // Every 10 levels
 
   /// Maximum rewarded ads user can watch per day
   static const int maxRewardedAdsPerDay = 10;
