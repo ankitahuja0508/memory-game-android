@@ -10,3 +10,4 @@ export 'remote_config_service.dart';
 export 'share_service.dart';
 export 'rate_app_service.dart';
 export 'notification_service.dart';
+export 'iap_service.dart';

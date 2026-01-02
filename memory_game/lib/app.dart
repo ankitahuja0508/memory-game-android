@@ -109,6 +109,14 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
     // Initialize Rate App Service
     await RateAppService.instance.initialize();
     
+    // Initialize IAP Service
+    await IAPService.instance.initialize();
+    
+    // Sync ads removed status from IAP to AdService
+    if (IAPService.instance.adsRemoved) {
+      AdService.instance.setAdsRemoved(true);
+    }
+    
     // Initialize Notification Service
     await NotificationService.instance.initialize();
     await NotificationService.instance.onAppOpened();
@@ -378,7 +386,9 @@ class _MemoryGameAppState extends State<MemoryGameApp> with WidgetsBindingObserv
                 final level = args?['level'] as int? ?? 1;
                 return MaterialPageRoute(builder: (_) => GameScreen(level: level));
               case '/shop':
-                return MaterialPageRoute(builder: (_) => const ShopScreen());
+                final args = settings.arguments as Map<String, dynamic>?;
+                final tabIndex = args?['tab'] as int? ?? 0;
+                return MaterialPageRoute(builder: (_) => ShopScreen(initialTabIndex: tabIndex));
               case '/themes':
                 return MaterialPageRoute(builder: (_) => const ThemesScreen());
               case '/settings':

@@ -110,14 +110,14 @@ class _NotificationPermissionBannerState extends State<NotificationPermissionBan
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            AppColors.primaryGradient[0].withOpacity(0.9),
-            AppColors.primaryGradient[1].withOpacity(0.9),
+            AppColors.primaryGradient[0].withValues(alpha: 0.9),
+            AppColors.primaryGradient[1].withValues(alpha: 0.9),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: AppColors.primaryGradient[0].withOpacity(0.3),
+            color: AppColors.primaryGradient[0].withValues(alpha: 0.3),
             blurRadius: 8,
             offset: const Offset(0, 4),
           ),
@@ -162,7 +162,7 @@ class _NotificationPermissionBannerState extends State<NotificationPermissionBan
                 '🎮 Get notified when you haven\'t played in a while\n'
                 '🏆 Celebrate achievements as you unlock them',
                 style: AppTextStyles.body1.copyWith(
-                  color: Colors.white.withOpacity(0.9),
+                  color: Colors.white.withValues(alpha: 0.9),
                   fontSize: 13,
                   height: 1.4,
                 ),

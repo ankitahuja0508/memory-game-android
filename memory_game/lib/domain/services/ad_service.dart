@@ -31,7 +31,6 @@ class AdService {
 
   // Banner Ad
   BannerAd? _bannerAd;
-  bool _isBannerAdLoaded = false; // TODO: Either use this field or remove all assignments to it
 
   // Settings
   bool _adsRemoved = false; // Set to true if user bought "Remove Ads"
@@ -520,12 +519,10 @@ class AdService {
         listener: BannerAdListener(
           onAdLoaded: (ad) {
             debugPrint('✅ Banner ad loaded');
-            _isBannerAdLoaded = true;
           },
           onAdFailedToLoad: (ad, error) {
             debugPrint('❌ Banner ad failed to load: $error');
             ad.dispose();
-            _isBannerAdLoaded = false;
           },
         ),
       );
@@ -574,7 +571,6 @@ class AdService {
         listener: BannerAdListener(
           onAdLoaded: (ad) {
             debugPrint('✅✅✅ BANNER AD LOADED (${adSize.width}x${adSize.height}) ✅✅✅');
-            _isBannerAdLoaded = true;
           },
           onAdFailedToLoad: (ad, error) {
             debugPrint('❌❌❌ BANNER AD FAILED TO LOAD ❌❌❌');
@@ -583,7 +579,6 @@ class AdService {
             debugPrint('   Domain: ${error.domain}');
             debugPrint('');
             ad.dispose();
-            _isBannerAdLoaded = false;
           },
         ),
       );

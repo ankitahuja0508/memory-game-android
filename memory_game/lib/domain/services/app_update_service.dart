@@ -4,12 +4,11 @@ import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../../data/models/settings_model.dart';
 import 'remote_config_service.dart';
 
 class AppUpdateService {
   static const String _currentVersion = '1.0.0'; // Update this with each release
-  static const int _currentBuildNumber = 6; // Update this with each release
+  static const int _currentBuildNumber = 8; // Update this with each release
   
   static const String _lastCheckedKey = 'last_update_checked';
   static const String _dismissedVersionKey = 'dismissed_update_version';
@@ -51,7 +50,7 @@ class AppUpdateService {
       if (!force) {
         final lastChecked = _prefs.getInt(_lastCheckedKey) ?? 0;
         final now = DateTime.now().millisecondsSinceEpoch;
-        final dayInMillis = 24 * 60 * 60 * 1000;
+        const dayInMillis = 24 * 60 * 60 * 1000;
         
         if (now - lastChecked < dayInMillis) {
           debugPrint('⏭️ Skipping update check (already checked today)');

@@ -77,6 +77,12 @@
     public <methods>;
 }
 
+# In-App Purchase
+-keep class io.flutter.plugins.inapppurchase.** { *; }
+-dontwarn io.flutter.plugins.inapppurchase.**
+-keep class com.android.billingclient.** { *; }
+-dontwarn com.android.billingclient.**
+
 # Remove logging in release
 -assumenosideeffects class android.util.Log {
     public static *** d(...);

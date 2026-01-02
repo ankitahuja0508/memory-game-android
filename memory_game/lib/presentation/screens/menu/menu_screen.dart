@@ -341,7 +341,7 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
                             child: GameButton(
                               text: 'Power-ups',
                               emoji: '⚡',
-                              onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/shop')),
+                              onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/shop', arguments: {'tab': 0})),
                               isOutlined: true,
                               isSmall: true,
                             ),
@@ -363,6 +363,21 @@ class _MenuScreenState extends State<MenuScreen> with WidgetsBindingObserver {
                         ],
                       ),
                     ).animate().fadeIn(delay: 500.ms).slideY(begin: 0.3),
+
+                    const SizedBox(height: 12),
+
+                    // Store button - prominent placement for IAP
+                    SizedBox(
+                      width: double.infinity,
+                      height: 44,
+                      child: GameButton(
+                        text: 'Store',
+                        emoji: '🛒',
+                        onPressed: () => _onButtonTap(() => Navigator.pushNamed(context, '/shop', arguments: {'tab': 1})),
+                        isOutlined: true,
+                        gradient: AppColors.primaryGradient,
+                      ),
+                    ).animate().fadeIn(delay: 550.ms).slideY(begin: 0.3),
 
                     const SizedBox(height: 12),
 
